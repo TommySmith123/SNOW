@@ -35,6 +35,9 @@ test("server renders the playable Shushu Snowline shell", async () => {
   assert.match(html, /SPACE/);
   assert.match(html, /K \/ L/);
   assert.match(html, /本地最佳/);
+  assert.match(html, /brand-title-cn/);
+  assert.match(html, />薯薯<\/span>/);
+  assert.match(html, />雪线<\/span>/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -70,6 +73,12 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /boardContact\(model\)/);
   assert.match(game, /drawHamster/);
   assert.match(game, /drawBlueGoldenCat/);
+  assert.match(game, /drawPawPrints/);
+  assert.match(game, /tangentStart/);
+  assert.match(game, /Start a fresh segment after take-off/);
+  assert.match(game, /conventional snowboard/);
+  assert.doesNotMatch(game, /rgba\(104, 191, 214/);
+  assert.doesNotMatch(game, /rgba\(119, 202, 222/);
   assert.match(game, /key === "k"/);
   assert.match(game, /key === "l"/);
   assert.doesNotMatch(game, /key === "w"/);

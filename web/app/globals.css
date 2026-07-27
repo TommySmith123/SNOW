@@ -60,17 +60,32 @@ button {
 
 .brand-panel h1 {
   margin: 0.5rem 0 0;
-  font-size: clamp(4.2rem, 8vw, 8rem);
-  line-height: 0.72;
-  letter-spacing: -0.1em;
+  line-height: 1;
 }
 
-.brand-panel h1 span {
+.brand-title-cn {
+  display: grid;
+  gap: 0.04em;
+  color: var(--paper);
+  font-size: clamp(4.2rem, 7vw, 7rem);
+  font-weight: 1000;
+  letter-spacing: -0.08em;
+  line-height: 0.9;
+}
+
+.brand-title-cn span {
   display: block;
-  margin-top: 0.55em;
+  white-space: nowrap;
+}
+
+.brand-title-en {
+  display: block;
+  margin-top: 1rem;
   color: transparent;
-  font-size: 0.42em;
-  letter-spacing: 0.06em;
+  font-size: clamp(1rem, 1.9vw, 1.55rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
   -webkit-text-stroke: 1px var(--paper);
 }
 
@@ -230,19 +245,26 @@ button {
 .overlay-title {
   margin: 0.5rem 0 0;
   color: #fff;
-  font-size: clamp(2.8rem, 10vw, 4.4rem);
+  font-size: clamp(3rem, 11vw, 4.7rem);
   font-weight: 1000;
-  line-height: 0.92;
-  letter-spacing: -0.07em;
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+}
+
+.overlay-title-line {
+  display: block;
+  white-space: nowrap;
 }
 
 .overlay-title em {
   display: block;
+  margin-top: 0.75rem;
   color: var(--acid);
   font-family: Georgia, serif;
-  font-size: 0.42em;
+  font-size: 0.36em;
   font-weight: 400;
   letter-spacing: 0.01em;
+  line-height: 1.2;
 }
 
 .record {

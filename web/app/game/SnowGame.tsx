@@ -209,65 +209,193 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
     ctx.rotate(model.crashTime * 3.8);
   }
 
+  // Loose snow is drawn as small white flecks, never as twin "thruster" beams.
   if (!isAirborne(model) && model.status !== "CRASHED") {
-    const plume = brake ? 1.55 : tuck ? 0.48 : 0.82;
-    ctx.fillStyle = brake
-      ? "rgba(104, 191, 214, .56)"
-      : "rgba(119, 202, 222, .38)";
-    for (const side of [-1, 1]) {
+    const spray = brake ? 7 : tuck ? 2 : 4;
+    ctx.fillStyle = brake ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.58)";
+    for (let i = 0; i < spray; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
       ctx.beginPath();
-      ctx.moveTo(side * 20, 26);
-      ctx.quadraticCurveTo(
-        side * 31 * plume,
-        38,
-        side * 42 * plume,
-        57,
+      ctx.arc(
+        side * (22 + i * 2.8),
+        30 + (i % 3) * 6,
+        1.4 + (i % 2),
+        0,
+        Math.PI * 2,
       );
-      ctx.quadraticCurveTo(side * 24 * plume, 48, side * 13, 29);
-      ctx.closePath();
       ctx.fill();
     }
   }
 
+  // Deep red hair silhouette from the supplied protagonist reference.
+  ctx.fillStyle = "#a9121d";
+  ctx.strokeStyle = "#170e18";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-15, -33);
+  ctx.lineTo(-25, -5);
+  ctx.lineTo(-17, -11);
+  ctx.lineTo(-20, 8);
+  ctx.lineTo(-8, -1);
+  ctx.lineTo(-4, 14);
+  ctx.lineTo(3, -2);
+  ctx.lineTo(16, 7);
+  ctx.lineTo(14, -14);
+  ctx.lineTo(23, -7);
+  ctx.lineTo(14, -34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Legs and boots.
   ctx.strokeStyle = "#071b2b";
   ctx.lineCap = "round";
-  ctx.lineWidth = 7;
+  ctx.lineWidth = 8;
   ctx.beginPath();
-  ctx.moveTo(-9, tuck ? 4 : 6);
-  ctx.lineTo(brake ? -21 : -14, tuck ? 20 : 26);
-  ctx.moveTo(8, tuck ? 4 : 6);
+  ctx.moveTo(-8, tuck ? 2 : 5);
+  ctx.lineTo(brake ? -21 : -14, tuck ? 20 : 25);
+  ctx.moveTo(7, tuck ? 2 : 5);
   ctx.lineTo(brake ? 21 : 14, tuck ? 20 : 25);
   ctx.stroke();
 
+  // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
   ctx.translate(tuck ? model.edge * 6 : 0, tuck ? 5 : 0);
   ctx.rotate(tuck ? -model.edge * 0.24 : brake ? model.edge * 0.12 : 0);
-  ctx.fillStyle = "#d7ff45";
-  ctx.strokeStyle = "#071b2b";
+  ctx.fillStyle = "#15191d";
+  ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
-  roundedRect(ctx, -14, tuck ? -18 : -22, 28, tuck ? 29 : 35, 9);
+  roundedRect(ctx, -15, tuck ? -19 : -23, 30, tuck ? 30 : 36, 9);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#ff5d4a";
+  ctx.strokeStyle = "#b7d6ff";
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.arc(tuck ? model.edge * 5 : 0, tuck ? -22 : -31, 11, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(-6, -6);
+  ctx.quadraticCurveTo(-10, -12, -4, -13);
+  ctx.quadraticCurveTo(0, -12, 0, -7);
+  ctx.quadraticCurveTo(0, -12, 4, -13);
+  ctx.quadraticCurveTo(10, -12, 6, -6);
+  ctx.lineTo(0, 2);
+  ctx.closePath();
   ctx.stroke();
-  ctx.restore();
+  ctx.beginPath();
+  ctx.moveTo(0, -16);
+  ctx.lineTo(0, -7);
+  ctx.moveTo(-3, -12);
+  ctx.lineTo(3, -12);
+  ctx.stroke();
 
-  ctx.strokeStyle = "#071b2b";
-  ctx.lineWidth = brake ? 10 : 8;
-  ctx.beginPath();
-  ctx.moveTo(brake ? -34 : -27, 28);
-  ctx.lineTo(brake ? 34 : 29, 28);
-  ctx.stroke();
-  ctx.strokeStyle = "#ff5d4a";
+  // Face, large black eyes and freckles.
+  ctx.fillStyle = "#ffd8ca";
+  ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(brake ? -34 : -27, 25);
-  ctx.lineTo(brake ? 34 : 29, 25);
+  ctx.ellipse(tuck ? model.edge * 4 : 0, tuck ? -23 : -33, 12, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.stroke();
+
+  ctx.fillStyle = "#07090e";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(
+      (tuck ? model.edge * 4 : 0) + side * 4.5,
+      tuck ? -25 : -35,
+      3.3,
+      4.3,
+      side * 0.12,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  ctx.strokeStyle = "#a9121d";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-10, tuck ? -28 : -38);
+  ctx.lineTo(-4, tuck ? -30 : -40);
+  ctx.moveTo(4, tuck ? -30 : -40);
+  ctx.lineTo(10, tuck ? -28 : -38);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(137,76,69,.65)";
+  for (const side of [-1, 1]) {
+    for (let dot = 0; dot < 2; dot++) {
+      ctx.beginPath();
+      ctx.arc(side * (3 + dot * 2), tuck ? -20 : -30, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // White wing-like ear accents.
+  ctx.fillStyle = "#f7fbff";
+  ctx.strokeStyle = "#170e18";
+  ctx.lineWidth = 2;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 11, tuck ? -28 : -38);
+    ctx.lineTo(side * 19, tuck ? -34 : -44);
+    ctx.lineTo(side * 17, tuck ? -28 : -38);
+    ctx.lineTo(side * 22, tuck ? -26 : -36);
+    ctx.lineTo(side * 12, tuck ? -23 : -33);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Black beanie and oversized dotted snow goggles.
+  ctx.fillStyle = "#111519";
+  ctx.strokeStyle = "#07090c";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(tuck ? model.edge * 4 : 0, tuck ? -31 : -41, 13, Math.PI, Math.PI * 2);
+  ctx.lineTo(13, tuck ? -27 : -37);
+  ctx.lineTo(-13, tuck ? -27 : -37);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#4d5255";
+  ctx.beginPath();
+  roundedRect(ctx, -12, tuck ? -42 : -52, 24, 10, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#91a9df";
+  for (const [dotX, dotY] of [[-7, -48], [0, -45], [7, -49]]) {
+    ctx.beginPath();
+    ctx.arc(dotX, dotY + (tuck ? 10 : 0), 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // A conventional snowboard: solid deck, metal edge and two bindings.
+  ctx.strokeStyle = "#071b2b";
+  ctx.fillStyle = "#e34a38";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(brake ? -38 : -32, 24);
+  ctx.quadraticCurveTo(brake ? -42 : -36, 28, brake ? -35 : -29, 31);
+  ctx.lineTo(brake ? 35 : 30, 31);
+  ctx.quadraticCurveTo(brake ? 42 : 36, 28, brake ? 38 : 33, 24);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255,255,255,.72)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(brake ? -34 : -29, 28);
+  ctx.lineTo(brake ? 34 : 30, 28);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#1c252d";
+  ctx.lineWidth = 3;
+  for (const bindingX of [-14, 14]) {
+    ctx.beginPath();
+    ctx.moveTo(bindingX - 4, 23);
+    ctx.lineTo(bindingX + 4, 29);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -315,7 +443,7 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
   const marks = model.trackMarks;
   const nextIndex = marks.findIndex((mark) => mark.distance >= targetDistance);
 
-  if (nextIndex <= 0) {
+  if (nextIndex <= 0 || marks.length < 2) {
     return {
       x: model.playerX + sideOffset,
       y: GAME.playerY - lagMeters * GAME.metersToPixels,
@@ -333,8 +461,13 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
   const baseX = previous.x + (current.x - previous.x) * progress;
   const baseDistance =
     previous.distance + (current.distance - previous.distance) * progress;
-  const dx = current.x - previous.x;
-  const dy = span * GAME.metersToPixels;
+  // Average across neighbouring samples so the companion does not snap its
+  // heading whenever it crosses from one track segment to the next.
+  const tangentStart = marks[Math.max(0, nextIndex - 2)];
+  const tangentEnd = marks[Math.min(marks.length - 1, nextIndex + 1)];
+  const dx = tangentEnd.x - tangentStart.x;
+  const dy =
+    (tangentEnd.distance - tangentStart.distance) * GAME.metersToPixels;
   const length = Math.max(1, Math.hypot(dx, dy));
   const perpendicularX = -dy / length;
   const perpendicularY = dx / length;
@@ -354,53 +487,90 @@ function drawHamster(
   position: ReturnType<typeof trailPosition>,
   phase: number,
 ) {
-  const hop = Math.abs(Math.sin(phase)) * 2.4;
+  const hop = (Math.sin(phase) + 1) * 0.65;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
   ctx.rotate(position.angle);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(0, 15 + hop, 14, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 18 + hop, 16, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#8b5c32";
+  // Round ears with pink centres immediately read as a hamster silhouette.
+  ctx.fillStyle = "#d87429";
+  ctx.strokeStyle = "#6f351d";
+  ctx.lineWidth = 2.4;
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    ctx.arc(side * 8, -8, 5, 0, Math.PI * 2);
+    ctx.arc(side * 10, -10, 6, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#f0a08f";
+    ctx.beginPath();
+    ctx.arc(side * 10, -10, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d87429";
   }
 
-  ctx.fillStyle = "#d7a765";
-  ctx.strokeStyle = "#704526";
-  ctx.lineWidth = 2.5;
+  const hamsterCoat = ctx.createLinearGradient(-13, -15, 12, 15);
+  hamsterCoat.addColorStop(0, "#f7a13a");
+  hamsterCoat.addColorStop(0.56, "#db7729");
+  hamsterCoat.addColorStop(1, "#aa4e20");
+  ctx.fillStyle = hamsterCoat;
+  ctx.strokeStyle = "#6f351d";
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.ellipse(0, 1, 14, 16, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2, 16, 19, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#f2d39b";
+  ctx.fillStyle = "#ffe1ad";
   ctx.beginPath();
-  ctx.ellipse(0, 6, 9, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 7, 11, 11, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.fillStyle = "#fff9ec";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * 8.5, 3, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.fillStyle = "#071b2b";
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    ctx.arc(side * 5, 0, 1.8, 0, Math.PI * 2);
+    ctx.arc(side * 5.5, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(side * 4.8, -2.8, 0.75, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#071b2b";
   }
-  ctx.fillStyle = "#ff7e72";
+  ctx.fillStyle = "#ef7c72";
   ctx.beginPath();
-  ctx.arc(0, 6, 2.1, 0, Math.PI * 2);
+  ctx.arc(0, 4, 2.3, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#ff5d4a";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-10, -4);
-  ctx.quadraticCurveTo(0, 1, 11, -3);
-  ctx.stroke();
+  ctx.strokeStyle = "#75472d";
+  ctx.lineWidth = 1.2;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 4, 5);
+    ctx.lineTo(side * 17, 2);
+    ctx.moveTo(side * 4, 7);
+    ctx.lineTo(side * 17, 9);
+    ctx.stroke();
+  }
+
+  // Tiny pale paws finish the orange-hamster read.
+  ctx.fillStyle = "#ffe1ad";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * 7, 15, 4, 3, side * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -409,89 +579,155 @@ function drawBlueGoldenCat(
   position: ReturnType<typeof trailPosition>,
   phase: number,
 ) {
-  const hop = Math.abs(Math.sin(phase)) * 1.8;
+  const hop = (Math.sin(phase) + 1) * 0.5;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
   ctx.rotate(position.angle);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(0, 20 + hop, 17, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 23 + hop, 19, 6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#78879c";
-  ctx.lineWidth = 7;
+  // Full fluffy tail and triangular ears make the pet unmistakably feline.
+  ctx.strokeStyle = "#6d7f95";
+  ctx.lineWidth = 9;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(7, -12);
-  ctx.bezierCurveTo(24, -23, 25, -2, 16, 3);
+  ctx.moveTo(9, 9);
+  ctx.bezierCurveTo(29, 3, 27, -20, 13, -17);
+  ctx.stroke();
+  ctx.strokeStyle = "#d2a55f";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(17, -12);
+  ctx.lineTo(23, -7);
   ctx.stroke();
 
-  const coat = ctx.createLinearGradient(-12, -16, 12, 18);
-  coat.addColorStop(0, "#71839c");
-  coat.addColorStop(0.52, "#98a6b6");
-  coat.addColorStop(1, "#d4ab67");
+  const coat = ctx.createLinearGradient(-14, -18, 14, 20);
+  coat.addColorStop(0, "#596d84");
+  coat.addColorStop(0.48, "#8fa0af");
+  coat.addColorStop(0.7, "#c9a66b");
+  coat.addColorStop(1, "#e5bd75");
   ctx.fillStyle = coat;
-  ctx.strokeStyle = "#314354";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#2e3e4d";
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 14, 21, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, 16, 21, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#7d8da4";
+  ctx.fillStyle = "#65798f";
+  ctx.strokeStyle = "#2e3e4d";
   ctx.beginPath();
-  ctx.moveTo(-10, 8);
-  ctx.lineTo(-8, -1);
-  ctx.lineTo(-2, 7);
+  ctx.moveTo(-13, -7);
+  ctx.lineTo(-10, -23);
+  ctx.lineTo(-2, -11);
   ctx.closePath();
   ctx.fill();
+  ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(10, 8);
-  ctx.lineTo(8, -1);
-  ctx.lineTo(2, 7);
+  ctx.moveTo(13, -7);
+  ctx.lineTo(10, -23);
+  ctx.lineTo(2, -11);
   ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = "#d6b06c";
-  ctx.beginPath();
-  ctx.arc(0, 11, 11, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#eff6d5";
+  ctx.fillStyle = "#e3bc78";
   ctx.beginPath();
-  ctx.ellipse(0, 15, 7, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -3, 14, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#f5dfb7";
+  ctx.beginPath();
+  ctx.ellipse(0, 3, 8, 6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#8fcf62";
+  ctx.fillStyle = "#8bca58";
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    ctx.arc(side * 4.5, 10, 1.8, 0, Math.PI * 2);
+    ctx.ellipse(side * 5, -4, 2.5, 3.2, side * 0.12, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "#15212b";
+    ctx.beginPath();
+    ctx.ellipse(side * 5, -4, 0.8, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#8bca58";
   }
-  ctx.fillStyle = "#8d5362";
+  ctx.fillStyle = "#9c5c61";
   ctx.beginPath();
-  ctx.moveTo(-2, 15);
-  ctx.lineTo(2, 15);
-  ctx.lineTo(0, 18);
+  ctx.moveTo(-2.5, 2);
+  ctx.lineTo(2.5, 2);
+  ctx.lineTo(0, 5);
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(49, 67, 84, .72)";
+  ctx.strokeStyle = "#506378";
+  ctx.lineWidth = 2;
+  for (const stripeX of [-6, 0, 6]) {
+    ctx.beginPath();
+    ctx.moveTo(stripeX, -14);
+    ctx.lineTo(stripeX * 0.7, -8);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(49, 67, 84, .82)";
   ctx.lineWidth = 1.5;
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    ctx.moveTo(side * 4, 16);
-    ctx.lineTo(side * 14, 14);
-    ctx.moveTo(side * 4, 18);
-    ctx.lineTo(side * 13, 20);
+    ctx.moveTo(side * 4, 4);
+    ctx.lineTo(side * 16, 1);
+    ctx.moveTo(side * 4, 6);
+    ctx.lineTo(side * 16, 8);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#d9af6d";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * 8, 19, 6, 4, side * 0.1, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
   }
   ctx.restore();
 }
 
+function drawPawPrints(
+  ctx: CanvasRenderingContext2D,
+  model: GameModel,
+  lagMeters: number,
+  sideOffset: number,
+  color: string,
+) {
+  for (let step = 1; step <= 6; step++) {
+    const foot = step % 2 === 0 ? -1 : 1;
+    const position = trailPosition(
+      model,
+      lagMeters + step * 2.15,
+      sideOffset + foot * 2.8,
+    );
+    const alpha = Math.max(0.08, 0.32 - step * 0.035);
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.rotate(position.angle);
+    ctx.fillStyle = color.replace("ALPHA", alpha.toFixed(3));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 2.6, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (const toeX of [-2.5, 0, 2.5]) {
+      ctx.beginPath();
+      ctx.arc(toeX, -3.8, 1.05, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
 function drawCompanions(ctx: CanvasRenderingContext2D, model: GameModel) {
+  drawPawPrints(ctx, model, 11, 20, "rgba(118,145,151,ALPHA)");
+  drawPawPrints(ctx, model, 19, -23, "rgba(87,117,132,ALPHA)");
   drawHamster(
     ctx,
     trailPosition(model, 11, 20),
@@ -785,15 +1021,31 @@ function update(
   }
 
   if (!air) {
-    model.trackAccumulator += traveled;
-    while (model.trackAccumulator >= GAME.trackSampleMeters) {
-      model.trackAccumulator -= GAME.trackSampleMeters;
-      const contact = boardContact(model);
-      model.trackMarks.push({
-        distance: contact.distance,
-        x: contact.x,
-        strength: input.brake ? 1.25 : input.accelerate ? 0.72 : 0.92,
-      });
+    const contact = boardContact(model);
+    const strength = input.brake ? 1.25 : input.accelerate ? 0.72 : 0.92;
+    let lastMark = model.trackMarks.at(-1);
+
+    if (
+      !lastMark ||
+      contact.distance - lastMark.distance > GAME.trackSampleMeters * 2.8
+    ) {
+      // Start a fresh segment after take-off instead of drawing across the air.
+      model.trackMarks.push({ ...contact, strength });
+      lastMark = model.trackMarks.at(-1);
+    } else {
+      let remaining = contact.distance - lastMark.distance;
+      while (remaining >= GAME.trackSampleMeters) {
+        const progress = GAME.trackSampleMeters / Math.max(remaining, 0.001);
+        const nextMark = {
+          distance: lastMark.distance + GAME.trackSampleMeters,
+          x: lastMark.x + (contact.x - lastMark.x) * progress,
+          strength,
+        };
+        model.trackMarks.push(nextMark);
+        lastMark = nextMark;
+        remaining = contact.distance - lastMark.distance;
+      }
+      model.trackAccumulator = Math.max(0, remaining);
     }
     model.snowAccumulator +=
       dt * (input.brake ? 70 : input.accelerate ? 18 : 30);
@@ -1020,9 +1272,12 @@ export function SnowGame() {
     <main className="game-shell">
       <section className="brand-panel" aria-label="游戏介绍">
         <p className="eyebrow">Endless alpine run</p>
-        <h1>
-          薯薯雪线
-          <span>SHUSHU SNOWLINE</span>
+        <h1 aria-label="薯薯雪线">
+          <span className="brand-title-cn" aria-hidden="true">
+            <span>薯薯</span>
+            <span>雪线</span>
+          </span>
+          <span className="brand-title-en">SHUSHU SNOWLINE</span>
         </h1>
         <p className="brand-copy">
           雪道不会等你。读懂路线、踩准换刃节奏，在失控边缘追逐更远的那一米。
@@ -1079,8 +1334,9 @@ export function SnowGame() {
           <div className="overlay">
             <div className="overlay-card">
               <p className="micro-label">Edge. Commit. Fly.</p>
-              <h2 className="overlay-title">
-                薯薯雪线
+              <h2 className="overlay-title" aria-label="薯薯雪线，无限滑降">
+                <span className="overlay-title-line" aria-hidden="true">薯薯</span>
+                <span className="overlay-title-line" aria-hidden="true">雪线</span>
                 <em>无限滑降</em>
               </h2>
               <p className="record">
