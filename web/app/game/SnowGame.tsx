@@ -650,13 +650,14 @@ function useAudio() {
 
 export function SnowGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const modelRef = useRef<GameModel>(createGame());
+  const [initialModel] = useState(() => createGame());
+  const modelRef = useRef<GameModel>(initialModel);
   const inputRef = useRef<InputState>({ accelerate: false, brake: false });
   const rafRef = useRef(0);
   const lastTimeRef = useRef(0);
   const hudTimeRef = useRef(0);
   const ping = useAudio();
-  const [hud, setHud] = useState<HudState>(() => hudFrom(modelRef.current));
+  const [hud, setHud] = useState<HudState>(() => hudFrom(initialModel));
 
   const syncHud = useCallback(() => {
     setHud(hudFrom(modelRef.current));
