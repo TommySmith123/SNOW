@@ -11,7 +11,7 @@ export const GAME = {
   lateralSpeed: 116,
   edgeAcceleration: 610,
   airControl: 0.08,
-  jumpDuration: 0.92,
+  jumpDuration: 1.04,
   jumpHeight: 92,
   jumpRecovery: 0.12,
   rockInvulnerability: 0.75,
@@ -28,6 +28,10 @@ export const GAME = {
   trackKeepMeters: 190,
   treeColliderX: 16,
   treeColliderY: 17,
+  crevasseColliderDepth: 0.3,
+  crevasseBoardMargin: 4,
+  crevasseClearance: 7,
+  crevasseEdgeGrace: 8,
 } as const;
 
 export type GameStatus =

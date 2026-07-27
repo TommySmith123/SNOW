@@ -180,6 +180,21 @@ function drawCrevasse(
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+
+  // The lower lip reaches the rider first. Highlight it as a clear jump cue.
+  ctx.save();
+  ctx.strokeStyle = "#d7ff45";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([12, 9]);
+  ctx.beginPath();
+  for (let i = 0; i <= 7; i++) {
+    const px = x + (width * i) / 7;
+    const jag = Math.cos(i * 9.3 + obstacle.id) * 5;
+    if (i === 0) ctx.moveTo(px, y + height / 2 + jag);
+    else ctx.lineTo(px, y + height / 2 + jag);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
@@ -872,7 +887,7 @@ function emitSnow(model: GameModel, amount: number, force = 1) {
 function collision(model: GameModel) {
   if (model.invulnerable > 0) return;
   const airborne = isAirborne(model);
-  const boardY = GAME.playerY + 23;
+  const boardY = GAME.playerY + 28;
 
   for (const obstacle of model.obstacles) {
     if (obstacle.hit) continue;
@@ -882,11 +897,22 @@ function collision(model: GameModel) {
 
     if (obstacle.type === "crevasse") {
       const crackHalf = trackWidth(obstacle.distance) * obstacle.width * 0.5;
-      const yGap = Math.abs(y - GAME.playerY);
+      const boardGap = Math.abs(y - boardY);
+      const insideOpening =
+        Math.abs(model.playerX - trackCenter(obstacle.distance)) <
+        crackHalf - GAME.crevasseEdgeGrace;
+      const overCrack =
+        boardGap <
+        obstacle.height * GAME.crevasseColliderDepth +
+          GAME.crevasseBoardMargin;
+      const boardClearance = jumpHeight(model);
+
+      // Crevasses collide with the snowboard contact point, not the rider's
+      // head/body. A small positive clearance is enough to clear the lip.
       if (
-        yGap < obstacle.height * 0.52 + GAME.playerRadius &&
-        Math.abs(model.playerX - trackCenter(obstacle.distance)) < crackHalf &&
-        !airborne
+        overCrack &&
+        insideOpening &&
+        (!airborne || boardClearance < GAME.crevasseClearance)
       ) {
         fatal = true;
       }

@@ -54,10 +54,12 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(config, /maxSpeed:\s*152/);
   assert.match(config, /acceleration:\s*18/);
   assert.match(config, /edgeAcceleration/);
-  assert.match(config, /jumpDuration/);
+  assert.match(config, /jumpDuration:\s*1\.04/);
   assert.match(config, /boundaryTurnLock/);
   assert.match(config, /trackSampleMeters/);
   assert.match(config, /treeColliderX/);
+  assert.match(config, /crevasseColliderDepth:\s*0\.3/);
+  assert.match(config, /crevasseClearance:\s*7/);
   assert.match(config, /"START"[\s\S]*"COUNTDOWN"[\s\S]*"PLAYING"/);
   assert.match(engine, /localStorage\.getItem\("snowline-best"\)/);
   assert.match(engine, /spawnPattern/);
@@ -66,6 +68,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /Math\.min\(0\.034/);
   assert.match(game, /visibilitychange/);
   assert.match(game, /obstacle\.type === "crevasse"/);
+  assert.match(game, /const boardGap = Math\.abs\(y - boardY\)/);
+  assert.match(game, /boardClearance < GAME\.crevasseClearance/);
+  assert.match(game, /Crevasses collide with the snowboard contact point/);
+  assert.doesNotMatch(game, /yGap < obstacle\.height \* 0\.52/);
   assert.match(game, /Only the clearly marked trunk base is solid/);
   assert.match(game, /model\.edge = inward/);
   assert.match(game, /model\.queuedEdge = inward/);
