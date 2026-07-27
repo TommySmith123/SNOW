@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
-const title = "雪线 Snowline — 单板无尽滑雪";
-const description = "换刃、控速、腾空，在不断变化的雪道上刷新你的最远纪录。";
+const title = "薯薯雪线 — 单板无尽滑雪";
+const description =
+  "带着仓鼠和蓝金渐层猫换刃、控速、腾空，在不断变化的雪道上刷新最远纪录。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -32,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: `${origin}/og.png`,
           width: 1536,
           height: 1024,
-          alt: "雪线 Snowline 单板滑雪游戏",
+          alt: "薯薯雪线、仓鼠和蓝金渐层猫一起滑雪",
         },
       ],
     },

@@ -23,16 +23,17 @@ async function render() {
   );
 }
 
-test("server renders the playable Snowline shell", async () => {
+test("server renders the playable Shushu Snowline shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>雪线 Snowline — 单板无尽滑雪<\/title>/i);
+  assert.match(html, /<title>薯薯雪线 — 单板无尽滑雪<\/title>/i);
   assert.match(html, /无限滑雪游戏画布/);
   assert.match(html, /开始滑行/);
   assert.match(html, /SPACE/);
+  assert.match(html, /K \/ L/);
   assert.match(html, /本地最佳/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
@@ -47,6 +48,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   ]);
 
   assert.match(config, /minSpeed:\s*30/);
+  assert.match(config, /maxSpeed:\s*152/);
+  assert.match(config, /acceleration:\s*18/);
   assert.match(config, /edgeAcceleration/);
   assert.match(config, /jumpDuration/);
   assert.match(config, /boundaryTurnLock/);
@@ -64,6 +67,13 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.edge = inward/);
   assert.match(game, /model\.queuedEdge = inward/);
   assert.match(game, /model\.trackMarks\.push/);
+  assert.match(game, /boardContact\(model\)/);
+  assert.match(game, /drawHamster/);
+  assert.match(game, /drawBlueGoldenCat/);
+  assert.match(game, /key === "k"/);
+  assert.match(game, /key === "l"/);
+  assert.doesNotMatch(game, /key === "w"/);
+  assert.doesNotMatch(game, /key === "s"/);
   assert.match(game, /model\.stance = "tuck"/);
   assert.match(game, /model\.stance = "brake"/);
   assert.doesNotMatch(game, /offTrack > 68/);

@@ -60,6 +60,25 @@ function roundedRect(
   ctx.roundRect(x, y, w, h, radius);
 }
 
+function boardContact(model: GameModel) {
+  const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
+  const tuck = model.stance === "tuck";
+  const brake = model.stance === "brake";
+  const crouch = tuck ? 12 : brake ? 5 : 0;
+  const edgeRotation =
+    (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) +
+    (brake ? model.edge * 0.42 : 0);
+  const boardOffset = 28;
+  const boardY =
+    GAME.playerY + crouch + Math.cos(edgeRotation) * boardOffset;
+
+  return {
+    x: model.playerX - Math.sin(edgeRotation) * boardOffset,
+    distance:
+      model.distance + (boardY - GAME.playerY) / GAME.metersToPixels,
+  };
+}
+
 function drawTree(ctx: CanvasRenderingContext2D, x: number, y: number, scale = 1) {
   ctx.save();
   ctx.translate(x, y);
@@ -291,6 +310,200 @@ function drawTracks(ctx: CanvasRenderingContext2D, model: GameModel) {
   }
 }
 
+function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) {
+  const targetDistance = model.distance - lagMeters;
+  const marks = model.trackMarks;
+  const nextIndex = marks.findIndex((mark) => mark.distance >= targetDistance);
+
+  if (nextIndex <= 0) {
+    return {
+      x: model.playerX + sideOffset,
+      y: GAME.playerY - lagMeters * GAME.metersToPixels,
+      angle: 0,
+    };
+  }
+
+  const previous = marks[nextIndex - 1];
+  const current = marks[nextIndex];
+  const span = Math.max(0.001, current.distance - previous.distance);
+  const progress = Math.max(
+    0,
+    Math.min(1, (targetDistance - previous.distance) / span),
+  );
+  const baseX = previous.x + (current.x - previous.x) * progress;
+  const baseDistance =
+    previous.distance + (current.distance - previous.distance) * progress;
+  const dx = current.x - previous.x;
+  const dy = span * GAME.metersToPixels;
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const perpendicularX = -dy / length;
+  const perpendicularY = dx / length;
+
+  return {
+    x: baseX + perpendicularX * sideOffset,
+    y:
+      GAME.playerY +
+      (baseDistance - model.distance) * GAME.metersToPixels +
+      perpendicularY * sideOffset,
+    angle: Math.atan2(dy, dx) - Math.PI / 2,
+  };
+}
+
+function drawHamster(
+  ctx: CanvasRenderingContext2D,
+  position: ReturnType<typeof trailPosition>,
+  phase: number,
+) {
+  const hop = Math.abs(Math.sin(phase)) * 2.4;
+  ctx.save();
+  ctx.translate(position.x, position.y - hop);
+  ctx.rotate(position.angle);
+
+  ctx.fillStyle = "rgba(7, 49, 61, .2)";
+  ctx.beginPath();
+  ctx.ellipse(0, 15 + hop, 14, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#8b5c32";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(side * 8, -8, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "#d7a765";
+  ctx.strokeStyle = "#704526";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 14, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#f2d39b";
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 9, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#071b2b";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(side * 5, 0, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#ff7e72";
+  ctx.beginPath();
+  ctx.arc(0, 6, 2.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#ff5d4a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-10, -4);
+  ctx.quadraticCurveTo(0, 1, 11, -3);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBlueGoldenCat(
+  ctx: CanvasRenderingContext2D,
+  position: ReturnType<typeof trailPosition>,
+  phase: number,
+) {
+  const hop = Math.abs(Math.sin(phase)) * 1.8;
+  ctx.save();
+  ctx.translate(position.x, position.y - hop);
+  ctx.rotate(position.angle);
+
+  ctx.fillStyle = "rgba(7, 49, 61, .2)";
+  ctx.beginPath();
+  ctx.ellipse(0, 20 + hop, 17, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#78879c";
+  ctx.lineWidth = 7;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(7, -12);
+  ctx.bezierCurveTo(24, -23, 25, -2, 16, 3);
+  ctx.stroke();
+
+  const coat = ctx.createLinearGradient(-12, -16, 12, 18);
+  coat.addColorStop(0, "#71839c");
+  coat.addColorStop(0.52, "#98a6b6");
+  coat.addColorStop(1, "#d4ab67");
+  ctx.fillStyle = coat;
+  ctx.strokeStyle = "#314354";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 14, 21, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#7d8da4";
+  ctx.beginPath();
+  ctx.moveTo(-10, 8);
+  ctx.lineTo(-8, -1);
+  ctx.lineTo(-2, 7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(10, 8);
+  ctx.lineTo(8, -1);
+  ctx.lineTo(2, 7);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#d6b06c";
+  ctx.beginPath();
+  ctx.arc(0, 11, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#eff6d5";
+  ctx.beginPath();
+  ctx.ellipse(0, 15, 7, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#8fcf62";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(side * 4.5, 10, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#8d5362";
+  ctx.beginPath();
+  ctx.moveTo(-2, 15);
+  ctx.lineTo(2, 15);
+  ctx.lineTo(0, 18);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(49, 67, 84, .72)";
+  ctx.lineWidth = 1.5;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 4, 16);
+    ctx.lineTo(side * 14, 14);
+    ctx.moveTo(side * 4, 18);
+    ctx.lineTo(side * 13, 20);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCompanions(ctx: CanvasRenderingContext2D, model: GameModel) {
+  drawHamster(
+    ctx,
+    trailPosition(model, 11, 20),
+    model.distance * 0.72,
+  );
+  drawBlueGoldenCat(
+    ctx,
+    trailPosition(model, 19, -23),
+    model.distance * 0.58 + 1.7,
+  );
+}
+
 function render(ctx: CanvasRenderingContext2D, model: GameModel) {
   const { width, height } = GAME;
   const shakeX = model.shake > 0 ? (seeded(model) - 0.5) * model.shake : 0;
@@ -355,6 +568,7 @@ function render(ctx: CanvasRenderingContext2D, model: GameModel) {
   }
 
   drawTracks(ctx, model);
+  drawCompanions(ctx, model);
 
   const visible = model.obstacles
     .map((obstacle) => ({ obstacle, ...obstacleScreenPosition(model, obstacle) }))
@@ -530,7 +744,7 @@ function update(
     const direction = Math.sign(GAME.cruiseSpeed - model.speed);
     model.speed += direction * GAME.cruiseReturn * dt;
   }
-  const dynamicMax = 82 + difficulty(model.distance) * (GAME.maxSpeed - 82);
+  const dynamicMax = 108 + difficulty(model.distance) * (GAME.maxSpeed - 108);
   model.speed = Math.max(GAME.minSpeed, Math.min(dynamicMax, model.speed));
 
   const previousCenter = trackCenter(model.distance);
@@ -574,9 +788,10 @@ function update(
     model.trackAccumulator += traveled;
     while (model.trackAccumulator >= GAME.trackSampleMeters) {
       model.trackAccumulator -= GAME.trackSampleMeters;
+      const contact = boardContact(model);
       model.trackMarks.push({
-        distance: model.distance,
-        x: model.playerX,
+        distance: contact.distance,
+        x: contact.x,
         strength: input.brake ? 1.25 : input.accelerate ? 0.72 : 0.92,
       });
     }
@@ -720,19 +935,19 @@ export function SnowGame() {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (
-        [" ", "arrowup", "arrowdown", "shift", "w", "s", "j", "p", "escape", "enter"].includes(
+        [" ", "arrowup", "arrowdown", "shift", "k", "l", "j", "p", "escape", "enter"].includes(
           key,
         )
       ) {
         event.preventDefault();
       }
-      if (key === "w" || key === "arrowup") {
+      if (key === "k" || key === "arrowup") {
         inputRef.current.accelerate = true;
         modelRef.current.stance = "tuck";
         modelRef.current.stanceHold = 0.24;
         syncHud();
       }
-      if (key === "s" || key === "arrowdown") {
+      if (key === "l" || key === "arrowdown") {
         inputRef.current.brake = true;
         modelRef.current.stance = "brake";
         modelRef.current.stanceHold = 0.24;
@@ -746,8 +961,8 @@ export function SnowGame() {
     };
     const onKeyUp = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (key === "w" || key === "arrowup") inputRef.current.accelerate = false;
-      if (key === "s" || key === "arrowdown") inputRef.current.brake = false;
+      if (key === "k" || key === "arrowup") inputRef.current.accelerate = false;
+      if (key === "l" || key === "arrowdown") inputRef.current.brake = false;
     };
     const onBlur = () => {
       inputRef.current = { accelerate: false, brake: false };
@@ -806,8 +1021,8 @@ export function SnowGame() {
       <section className="brand-panel" aria-label="游戏介绍">
         <p className="eyebrow">Endless alpine run</p>
         <h1>
-          雪线
-          <span>SNOWLINE</span>
+          薯薯雪线
+          <span>SHUSHU SNOWLINE</span>
         </h1>
         <p className="brand-copy">
           雪道不会等你。读懂路线、踩准换刃节奏，在失控边缘追逐更远的那一米。
@@ -815,7 +1030,7 @@ export function SnowGame() {
         <div className="brand-rule" />
       </section>
 
-      <section className="game-stage" aria-label="雪线滑雪游戏">
+      <section className="game-stage" aria-label="薯薯雪线滑雪游戏">
         <canvas
           ref={canvasRef}
           className="game-canvas"
@@ -865,7 +1080,7 @@ export function SnowGame() {
             <div className="overlay-card">
               <p className="micro-label">Edge. Commit. Fly.</p>
               <h2 className="overlay-title">
-                雪线
+                薯薯雪线
                 <em>无限滑降</em>
               </h2>
               <p className="record">
@@ -876,7 +1091,7 @@ export function SnowGame() {
               </button>
               <div className="control-strip" aria-label="操作说明">
                 <span><kbd>SPACE</kbd>换刃</span>
-                <span><kbd>W / S</kbd>调速</span>
+                <span><kbd>K / L</kbd>调速</span>
                 <span><kbd>J</kbd>跳跃</span>
               </div>
             </div>
@@ -935,8 +1150,8 @@ export function SnowGame() {
         <h2>别推方向，抓住节奏。</h2>
         <div className="key-list">
           <div className="key-row"><kbd>SPACE</kbd><span>切换左右刃，有惯性</span></div>
-          <div className="key-row"><kbd>W / ↑</kbd><span>压低重心，加速</span></div>
-          <div className="key-row"><kbd>S / ↓</kbd><span>横板刹雪，减速</span></div>
+          <div className="key-row"><kbd>K / ↑</kbd><span>压低重心，平滑加速</span></div>
+          <div className="key-row"><kbd>L / ↓</kbd><span>横板刹雪，减速</span></div>
           <div className="key-row"><kbd>J / SHIFT</kbd><span>跳过裂缝与小石</span></div>
           <div className="key-row"><kbd>ESC / P</kbd><span>暂停或继续</span></div>
         </div>
