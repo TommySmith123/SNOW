@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 :root {
   --ink: #071b2b;
   --ice: #b8e7f3;
@@ -21,6 +19,8 @@ body {
 }
 
 body {
+  min-height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(circle at 15% 18%, rgba(215, 255, 69, 0.14), transparent 27rem),
     radial-gradient(circle at 88% 74%, rgba(49, 155, 198, 0.22), transparent 32rem),
@@ -393,11 +393,118 @@ button {
   font-size: 0.78rem;
 }
 
+.start-actions .install-button {
+  grid-column: 1 / -1;
+}
+
 .control-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
   margin-top: 1.5rem;
+}
+
+.mobile-control-hint {
+  display: none;
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.65rem;
+  background: rgba(91, 232, 239, 0.09);
+  color: #bfe8ef;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.touch-controls {
+  position: absolute;
+  right: 0.72rem;
+  bottom: max(0.72rem, env(safe-area-inset-bottom));
+  left: 0.72rem;
+  z-index: 3;
+  display: none;
+  grid-template-columns: 4.6rem minmax(5.2rem, 1fr) 4.6rem;
+  align-items: end;
+  gap: 0.65rem;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touch-action {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: rgba(7, 27, 43, 0.72);
+  color: #fff;
+  box-shadow:
+    0 0.4rem 1.2rem rgba(0, 0, 0, 0.22),
+    inset 0 0 0 0.16rem rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-action:active {
+  transform: translateY(0.12rem) scale(0.97);
+  background: rgba(26, 91, 103, 0.86);
+}
+
+.touch-action:disabled {
+  opacity: 0.34;
+}
+
+.touch-edge,
+.touch-jump {
+  width: 4.6rem;
+  height: 4.6rem;
+  padding: 0.4rem;
+  border-radius: 50%;
+}
+
+.touch-edge {
+  border-color: rgba(215, 255, 69, 0.76);
+}
+
+.touch-jump {
+  border-color: rgba(255, 93, 74, 0.78);
+}
+
+.touch-action strong,
+.touch-action small {
+  display: block;
+}
+
+.touch-action strong {
+  font-size: 0.82rem;
+}
+
+.touch-action small {
+  margin-top: 0.15rem;
+  color: #accbd5;
+  font-size: 0.52rem;
+}
+
+.touch-speed-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.touch-speed-controls .touch-action {
+  min-height: 3.25rem;
+  border-radius: 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 1000;
+}
+
+.touch-accelerate {
+  border-color: rgba(215, 255, 69, 0.72);
+  color: #eaff9f;
+}
+
+.touch-brake {
+  border-color: rgba(255, 93, 74, 0.7);
+  color: #ffd0c9;
 }
 
 .control-strip span {
@@ -1089,7 +1196,11 @@ button {
 @media (max-width: 980px) {
   .game-shell {
     grid-template-columns: 1fr;
-    padding: 0.75rem;
+    padding:
+      max(0.5rem, env(safe-area-inset-top))
+      max(0.5rem, env(safe-area-inset-right))
+      max(0.5rem, env(safe-area-inset-bottom))
+      max(0.5rem, env(safe-area-inset-left));
   }
 
   .brand-panel,
@@ -1098,19 +1209,66 @@ button {
   }
 
   .game-stage {
-    width: min(100%, calc(100dvh * 0.5625 - 0.5rem));
-    max-height: calc(100dvh - 1.5rem);
+    width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.5625));
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem);
+  }
+
+  .desktop-control-strip {
+    display: none;
+  }
+
+  .mobile-control-hint,
+  .touch-controls {
+    display: grid;
   }
 }
 
 @media (max-width: 560px) {
   .game-stage {
-    border-radius: 0.9rem;
+    border-width: 0;
+    border-radius: 0;
   }
 
   .overlay {
     padding: 1rem;
   }
+}
+
+@media (pointer: coarse) {
+  .desktop-control-strip {
+    display: none;
+  }
+
+  .mobile-control-hint,
+  .touch-controls {
+    display: grid;
+  }
+}
+
+body.native-mobile .game-shell {
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+body.native-mobile .game-stage {
+  width: min(100%, calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.5625));
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  border-width: 0;
+  border-radius: 0;
+}
+
+body.native-mobile .brand-panel,
+body.native-mobile .side-panel,
+body.native-mobile .desktop-control-strip {
+  display: none;
+}
+
+body.native-mobile .mobile-control-hint,
+body.native-mobile .touch-controls {
+  display: grid;
 }
 
 @media (prefers-reduced-motion: reduce) {

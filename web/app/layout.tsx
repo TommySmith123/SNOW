@@ -20,9 +20,21 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
+    applicationName: "薯薯雪线",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: "薯薯雪线",
+      statusBarStyle: "black-translucent",
+    },
     icons: {
-      icon: "/favicon.svg",
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
       shortcut: "/favicon.svg",
+      apple: "/icons/icon-192.png",
     },
     openGraph: {
       title,
@@ -50,6 +62,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#071b2b",
+  colorScheme: "dark",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

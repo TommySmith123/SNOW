@@ -70,6 +70,14 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(engine, /spawnPattern/);
   assert.match(engine, /trackWidth/);
   assert.match(game, /event\.repeat/);
+  assert.match(game, /onPointerDown/);
+  assert.match(game, /onPointerCancel/);
+  assert.match(game, /onLostPointerCapture/);
+  assert.match(game, /setTouchSpeed/);
+  assert.match(game, /beforeinstallprompt/);
+  assert.match(game, /serviceWorker\.register\("\/sw\.js"\)/);
+  assert.match(game, /shushu:pause/);
+  assert.match(game, /shushu:haptic/);
   assert.match(game, /Math\.min\(0\.034/);
   assert.match(game, /visibilitychange/);
   assert.match(game, /obstacle\.type === "crevasse"/);
@@ -133,4 +141,52 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(shopModal, /data-style=\{item\.style\}/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+});
+
+test("keeps PWA and native mobile delivery separate", async () => {
+  const [
+    manifest,
+    serviceWorker,
+    layout,
+    mobileConfig,
+    mobileEntry,
+    nativeBridge,
+    androidManifest,
+    iosInfo,
+  ] = await Promise.all([
+    readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../mobile/capacitor.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../mobile/src/main.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../mobile/src/nativeBridge.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../../mobile/android/app/src/main/AndroidManifest.xml", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../../mobile/ios/App/App/Info.plist", import.meta.url), "utf8"),
+  ]);
+
+  const pwa = JSON.parse(manifest);
+  assert.equal(pwa.name, "薯薯雪线");
+  assert.equal(pwa.display, "standalone");
+  assert.equal(pwa.orientation, "portrait");
+  assert.ok(pwa.icons.some((icon) => icon.sizes === "192x192"));
+  assert.ok(pwa.icons.some((icon) => icon.sizes === "512x512"));
+  assert.match(serviceWorker, /shushu-snowline-v1/);
+  assert.match(serviceWorker, /caches\.open/);
+  assert.match(serviceWorker, /request\.mode === "navigate"/);
+  assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
+  assert.match(layout, /appleWebApp/);
+
+  assert.match(mobileConfig, /appId:\s*"com\.shushu\.snowline"/);
+  assert.match(mobileConfig, /webDir:\s*"www"/);
+  assert.doesNotMatch(mobileConfig, /\burl\s*:/);
+  assert.match(mobileEntry, /\.\.\/\.\.\/web\/app\/game\/SnowGame/);
+  assert.match(nativeBridge, /Capacitor\.isNativePlatform/);
+  assert.match(nativeBridge, /Haptics/);
+  assert.match(nativeBridge, /appStateChange/);
+  assert.match(androidManifest, /android:screenOrientation="portrait"/);
+  assert.match(iosInfo, /UIInterfaceOrientationPortrait/);
+  assert.doesNotMatch(iosInfo, /UIInterfaceOrientationLandscape/);
 });

@@ -38,6 +38,30 @@ import {
   type ShopProfile,
 } from "./shop";
 
+type HapticKind = "light" | "medium" | "heavy" | "shield";
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+function emitHaptic(kind: HapticKind) {
+  window.dispatchEvent(
+    new CustomEvent("shushu:haptic", { detail: { kind } }),
+  );
+  if (typeof navigator.vibrate === "function") {
+    const pattern =
+      kind === "light"
+        ? 12
+        : kind === "medium"
+          ? 24
+          : kind === "shield"
+            ? [28, 24, 48]
+            : 55;
+    navigator.vibrate(pattern);
+  }
+}
+
 type HudState = {
   status: GameStatus;
   distance: number;
@@ -1376,6 +1400,7 @@ function collision(model: GameModel) {
         model.invulnerable = GAME.rockInvulnerability;
         model.shake = 10;
         emitSnow(model, 20, 1.4);
+        emitHaptic("medium");
       }
     }
 
@@ -1389,6 +1414,7 @@ function collision(model: GameModel) {
         model.shake = 13;
         obstacle.hit = true;
         emitSnow(model, 34, 1.8);
+        emitHaptic("shield");
         return;
       }
       model.status = "CRASHED";
@@ -1396,6 +1422,7 @@ function collision(model: GameModel) {
       model.speed *= 0.25;
       model.shake = 18;
       emitSnow(model, 42, 2.1);
+      emitHaptic("heavy");
       return;
     }
   }
@@ -1709,6 +1736,8 @@ export function SnowGame() {
   const [shopOpen, setShopOpen] = useState(false);
   const [lastReward, setLastReward] = useState(0);
   const [lastPetBonus, setLastPetBonus] = useState(0);
+  const [installPrompt, setInstallPrompt] =
+    useState<InstallPromptEvent | null>(null);
 
   const syncHud = useCallback(() => {
     setHud(hudFrom(modelRef.current));
@@ -1743,6 +1772,7 @@ export function SnowGame() {
   const togglePause = useCallback(() => {
     const model = modelRef.current;
     if (model.status === "PLAYING") {
+      inputRef.current = { accelerate: false, brake: false };
       model.status = "PAUSED";
       ping(240, 0.08);
       stopMusic();
@@ -1764,6 +1794,7 @@ export function SnowGame() {
       model.edge = next;
       emitSnow(model, 8, 0.85);
     }
+    emitHaptic("light");
     ping(340 + (next > 0 ? 70 : 0), 0.055, 0.035);
   }, [ping]);
 
@@ -1777,9 +1808,29 @@ export function SnowGame() {
       model.jumpTime = 0;
       model.queuedEdge = model.edge;
       emitSnow(model, 12, 1.15);
+      emitHaptic("medium");
       ping(510, 0.12);
     }
   }, [ping]);
+
+  const setTouchSpeed = useCallback(
+    (kind: "accelerate" | "brake", active: boolean) => {
+      if (active && modelRef.current.status !== "PLAYING") return;
+      inputRef.current[kind] = active;
+      if (active) {
+        inputRef.current[kind === "accelerate" ? "brake" : "accelerate"] = false;
+        emitHaptic("light");
+      }
+    },
+    [],
+  );
+
+  const installApp = useCallback(async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }, [installPrompt]);
 
   const handleShopItem = useCallback(
     (item: ShopItem) => {
@@ -1848,6 +1899,31 @@ export function SnowGame() {
   }, [syncHud]);
 
   useEffect(() => {
+    const isNativeMobile = document.querySelector(
+      'meta[name="shushu-platform"][content="mobile"]',
+    );
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onInstalled);
+    if (
+      !isNativeMobile &&
+      "serviceWorker" in navigator &&
+      (location.protocol === "https:" || location.hostname === "localhost")
+    ) {
+      void navigator.serviceWorker.register("/sw.js");
+    }
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (shopOpen) {
@@ -1898,11 +1974,13 @@ export function SnowGame() {
     window.addEventListener("keydown", onKeyDown, { passive: false });
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
+    window.addEventListener("shushu:pause", onBlur);
     document.addEventListener("visibilitychange", onBlur);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
+      window.removeEventListener("shushu:pause", onBlur);
       document.removeEventListener("visibilitychange", onBlur);
     };
   }, [jump, shopOpen, start, stopMusic, syncHud, toggleEdge, togglePause]);
@@ -2036,6 +2114,69 @@ export function SnowGame() {
           </div>
         )}
 
+        {(hud.status === "PLAYING" || hud.status === "PAUSED") && (
+          <div className="touch-controls" aria-label="手机触控操作">
+            <button
+              className="touch-action touch-edge"
+              type="button"
+              disabled={hud.status !== "PLAYING"}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                toggleEdge();
+              }}
+            >
+              <strong>换刃</strong>
+              <small>左右切换</small>
+            </button>
+            <div className="touch-speed-controls">
+              <button
+                className="touch-action touch-accelerate"
+                type="button"
+                disabled={hud.status !== "PLAYING"}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setTouchSpeed("accelerate", true);
+                }}
+                onPointerUp={() => setTouchSpeed("accelerate", false)}
+                onPointerCancel={() => setTouchSpeed("accelerate", false)}
+                onPointerLeave={() => setTouchSpeed("accelerate", false)}
+                onLostPointerCapture={() => setTouchSpeed("accelerate", false)}
+              >
+                加速
+              </button>
+              <button
+                className="touch-action touch-brake"
+                type="button"
+                disabled={hud.status !== "PLAYING"}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setTouchSpeed("brake", true);
+                }}
+                onPointerUp={() => setTouchSpeed("brake", false)}
+                onPointerCancel={() => setTouchSpeed("brake", false)}
+                onPointerLeave={() => setTouchSpeed("brake", false)}
+                onLostPointerCapture={() => setTouchSpeed("brake", false)}
+              >
+                减速
+              </button>
+            </div>
+            <button
+              className="touch-action touch-jump"
+              type="button"
+              disabled={hud.status !== "PLAYING"}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                jump();
+              }}
+            >
+              <strong>跳跃</strong>
+              <small>越过障碍</small>
+            </button>
+          </div>
+        )}
+
         {hud.status === "START" && (
           <div className="overlay">
             <div className="overlay-card">
@@ -2072,11 +2213,23 @@ export function SnowGame() {
                 >
                   音乐 {profile.musicEnabled ? "开" : "关"}
                 </button>
+                {installPrompt && (
+                  <button
+                    className="secondary-button install-button"
+                    type="button"
+                    onClick={installApp}
+                  >
+                    安装到手机
+                  </button>
+                )}
               </div>
-              <div className="control-strip" aria-label="操作说明">
+              <div className="control-strip desktop-control-strip" aria-label="键盘操作说明">
                 <span><kbd>SPACE</kbd>换刃</span>
                 <span><kbd>K / L</kbd>调速</span>
                 <span><kbd>J</kbd>跳跃</span>
+              </div>
+              <div className="mobile-control-hint">
+                进入雪道后使用屏幕按钮换刃、调速和跳跃
               </div>
             </div>
           </div>

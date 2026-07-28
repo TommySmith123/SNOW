@@ -1,0 +1,22 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body.native-mobile {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #071b2b;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body.native-mobile .shop-panel {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
