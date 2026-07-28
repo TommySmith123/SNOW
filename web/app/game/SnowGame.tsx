@@ -30,7 +30,7 @@ import {
   getBoard,
   getShopItem,
   loadProfile,
-  rewardForDistance,
+  rewardForRun,
   saveProfile,
   unlockTestProfile,
   type GearSlot,
@@ -47,6 +47,7 @@ type HudState = {
   isNewBest: boolean;
   stance: PlayerStance;
   autoTurn: boolean;
+  shieldCharges: number;
 };
 
 function hudFrom(model: GameModel): HudState {
@@ -59,6 +60,7 @@ function hudFrom(model: GameModel): HudState {
     isNewBest: model.isNewBest,
     stance: model.stance,
     autoTurn: model.boundaryTurnCooldown > 0,
+    shieldCharges: model.shieldCharges,
   };
 }
 
@@ -345,6 +347,248 @@ function drawSnowboardPattern(
   ctx.restore();
 }
 
+function drawShield(ctx: CanvasRenderingContext2D, model: GameModel) {
+  if (model.shieldCharges <= 0 && model.shieldFlash <= 0) return;
+  const flash = Math.min(1, model.shieldFlash / 0.72);
+  const air = jumpHeight(model);
+  const y = GAME.playerY - air - 10;
+  const pulse = 1 + Math.sin(model.distance * 0.18) * 0.025;
+
+  ctx.save();
+  ctx.translate(model.playerX, y);
+  ctx.scale(pulse, pulse);
+  ctx.fillStyle = `rgba(91, 232, 239, ${0.075 + flash * 0.24})`;
+  ctx.strokeStyle = `rgba(155, 250, 255, ${0.24 + flash * 0.66})`;
+  ctx.lineWidth = flash > 0 ? 4 : 2;
+  ctx.beginPath();
+  ctx.ellipse(0, -5, 38, 61, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(215, 255, 69, ${flash * 0.72})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, -5, 42 + flash * 7, -0.8, 1.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPantsDecoration(
+  ctx: CanvasRenderingContext2D,
+  pants: ShopItem,
+  tuck: boolean,
+  brake: boolean,
+) {
+  if (!pants.style) return;
+  const accent = pants.accent ?? "#fff";
+  const leftFoot = brake ? -21 : -14;
+  const rightFoot = brake ? 21 : 14;
+  const kneeY = tuck ? 13 : 16;
+
+  ctx.save();
+  ctx.strokeStyle = accent;
+  ctx.fillStyle = accent;
+  ctx.lineCap = "round";
+
+  if (pants.style === "checker") {
+    for (const x of [-10, 7]) {
+      ctx.fillRect(x - 3, kneeY - 3, 3, 3);
+      ctx.fillRect(x, kneeY, 3, 3);
+    }
+  } else if (pants.style === "cargo") {
+    ctx.lineWidth = 1.5;
+    for (const x of [-11, 8]) {
+      roundedRect(ctx, x - 3, kneeY - 4, 6, 6, 1.5);
+      ctx.stroke();
+    }
+  } else if (pants.style === "flame") {
+    ctx.lineWidth = 2.4;
+    for (const [startX, footX] of [[-11, leftFoot], [10, rightFoot]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(startX, kneeY - 1);
+      ctx.lineTo((startX + footX) / 2 + 3, kneeY + 4);
+      ctx.lineTo((startX + footX) / 2 - 1, kneeY + 6);
+      ctx.lineTo(footX, tuck ? 20 : 25);
+      ctx.stroke();
+    }
+  } else if (pants.style === "aurora") {
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-8, tuck ? 3 : 6);
+    ctx.quadraticCurveTo(-5, kneeY, leftFoot, tuck ? 20 : 25);
+    ctx.moveTo(7, tuck ? 3 : 6);
+    ctx.quadraticCurveTo(5, kneeY, rightFoot, tuck ? 20 : 25);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawJacketDecoration(
+  ctx: CanvasRenderingContext2D,
+  jacket: ShopItem,
+  tuck: boolean,
+) {
+  const top = tuck ? -19 : -23;
+  const bottom = top + (tuck ? 30 : 36);
+  const accent = jacket.accent ?? "#b7d6ff";
+
+  ctx.save();
+  ctx.strokeStyle = accent;
+  ctx.fillStyle = accent;
+  ctx.lineWidth = 1.6;
+
+  if (jacket.style === "puffer") {
+    for (let y = top + 7; y < bottom - 3; y += 6) {
+      ctx.beginPath();
+      ctx.moveTo(-13, y);
+      ctx.quadraticCurveTo(0, y + 2, 13, y);
+      ctx.stroke();
+    }
+  } else if (jacket.style === "checker") {
+    for (const [x, y] of [[-10, top + 7], [1, top + 7], [-4.5, top + 16], [6.5, top + 16]] as const) {
+      ctx.fillRect(x, y, 6, 6);
+    }
+  } else if (jacket.style === "flame") {
+    ctx.beginPath();
+    ctx.moveTo(-13, bottom - 2);
+    ctx.lineTo(-10, bottom - 13);
+    ctx.lineTo(-5, bottom - 6);
+    ctx.lineTo(0, bottom - 16);
+    ctx.lineTo(5, bottom - 6);
+    ctx.lineTo(10, bottom - 13);
+    ctx.lineTo(13, bottom - 2);
+    ctx.closePath();
+    ctx.fill();
+  } else if (jacket.style === "star") {
+    ctx.beginPath();
+    for (let point = 0; point < 10; point++) {
+      const angle = -Math.PI / 2 + (point * Math.PI) / 5;
+      const radius = point % 2 === 0 ? 8 : 3.6;
+      const x = Math.cos(angle) * radius;
+      const y = (top + 17) + Math.sin(angle) * radius;
+      if (point === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    for (const [x, y] of [[-10, top + 7], [10, top + 11], [-9, bottom - 5]] as const) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    // The reference outfit keeps its pale-blue heart/deer emblem.
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.quadraticCurveTo(-10, -12, -4, -13);
+    ctx.quadraticCurveTo(0, -12, 0, -7);
+    ctx.quadraticCurveTo(0, -12, 4, -13);
+    ctx.quadraticCurveTo(10, -12, 6, -6);
+    ctx.lineTo(0, 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -16);
+    ctx.lineTo(0, -7);
+    ctx.moveTo(-3, -12);
+    ctx.lineTo(3, -12);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawHatShape(
+  ctx: CanvasRenderingContext2D,
+  hat: ShopItem,
+  centerX: number,
+  centerY: number,
+) {
+  const accent = hat.accent ?? "#fff";
+  ctx.fillStyle = hat.color;
+  ctx.strokeStyle = "#07090c";
+  ctx.lineWidth = 3;
+
+  if (hat.style === "cat") {
+    ctx.beginPath();
+    ctx.moveTo(centerX - 14, centerY + 5);
+    ctx.lineTo(centerX - 13, centerY - 13);
+    ctx.lineTo(centerX - 5, centerY - 7);
+    ctx.quadraticCurveTo(centerX, centerY - 12, centerX + 5, centerY - 7);
+    ctx.lineTo(centerX + 13, centerY - 13);
+    ctx.lineTo(centerX + 14, centerY + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 11, centerY - 9);
+    ctx.lineTo(centerX - 6, centerY - 5);
+    ctx.moveTo(centerX + 11, centerY - 9);
+    ctx.lineTo(centerX + 6, centerY - 5);
+    ctx.stroke();
+    return;
+  }
+
+  if (hat.style === "trapper") {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 14, Math.PI, Math.PI * 2);
+    ctx.lineTo(centerX + 14, centerY + 8);
+    ctx.lineTo(centerX + 9, centerY + 12);
+    ctx.lineTo(centerX + 6, centerY + 5);
+    ctx.lineTo(centerX - 6, centerY + 5);
+    ctx.lineTo(centerX - 9, centerY + 12);
+    ctx.lineTo(centerX - 14, centerY + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 11, centerY + 3);
+    ctx.lineTo(centerX + 11, centerY + 3);
+    ctx.stroke();
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, hat.style === "helmet" ? 14.5 : 13, Math.PI, Math.PI * 2);
+  ctx.lineTo(centerX + 13, centerY + 4);
+  ctx.lineTo(centerX - 13, centerY + 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  if (hat.style === "pom") {
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY - 15, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 11, centerY + 1);
+    ctx.lineTo(centerX + 11, centerY + 1);
+    ctx.stroke();
+  } else if (hat.style === "helmet") {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - 10);
+    ctx.lineTo(centerX + 2, centerY - 4);
+    ctx.lineTo(centerX + 8, centerY - 4);
+    ctx.lineTo(centerX + 3, centerY);
+    ctx.lineTo(centerX + 5, centerY + 5);
+    ctx.lineTo(centerX, centerY + 2);
+    ctx.lineTo(centerX - 5, centerY + 5);
+    ctx.lineTo(centerX - 3, centerY);
+    ctx.lineTo(centerX - 8, centerY - 4);
+    ctx.lineTo(centerX - 2, centerY - 4);
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
 function drawBoarder(
   ctx: CanvasRenderingContext2D,
   model: GameModel,
@@ -429,6 +673,7 @@ function drawBoarder(
   ctx.moveTo(7, tuck ? 2 : 5);
   ctx.lineTo(brake ? 21 : 14, tuck ? 20 : 25);
   ctx.stroke();
+  drawPantsDecoration(ctx, pantsStyle, tuck, brake);
 
   // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
@@ -441,23 +686,7 @@ function drawBoarder(
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "#b7d6ff";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(-6, -6);
-  ctx.quadraticCurveTo(-10, -12, -4, -13);
-  ctx.quadraticCurveTo(0, -12, 0, -7);
-  ctx.quadraticCurveTo(0, -12, 4, -13);
-  ctx.quadraticCurveTo(10, -12, 6, -6);
-  ctx.lineTo(0, 2);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -16);
-  ctx.lineTo(0, -7);
-  ctx.moveTo(-3, -12);
-  ctx.lineTo(3, -12);
-  ctx.stroke();
+  drawJacketDecoration(ctx, jacketStyle, tuck);
 
   // Face, large black eyes and freckles.
   ctx.fillStyle = "#ffd8ca";
@@ -516,16 +745,12 @@ function drawBoarder(
   }
 
   // Black beanie and oversized dotted snow goggles.
-  ctx.fillStyle = hatStyle.color;
-  ctx.strokeStyle = "#07090c";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(tuck ? model.edge * 4 : 0, tuck ? -31 : -41, 13, Math.PI, Math.PI * 2);
-  ctx.lineTo(13, tuck ? -27 : -37);
-  ctx.lineTo(-13, tuck ? -27 : -37);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
+  drawHatShape(
+    ctx,
+    hatStyle,
+    tuck ? model.edge * 4 : 0,
+    tuck ? -31 : -41,
+  );
 
   ctx.fillStyle = gogglesStyle.color;
   ctx.beginPath();
@@ -1055,6 +1280,7 @@ function render(
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+  drawShield(ctx, model);
   drawBoarder(ctx, model, profile);
 
   const d = difficulty(model.distance);
@@ -1127,7 +1353,7 @@ function collision(model: GameModel) {
       ) {
         fatal = true;
       }
-    } else if (obstacle.type === "tree") {
+    } else if (!airborne && obstacle.type === "tree") {
       // Only the clearly marked trunk base is solid. Tree canopy overlap is visual.
       const trunkBaseY = y + 21;
       if (
@@ -1136,14 +1362,14 @@ function collision(model: GameModel) {
       ) {
         fatal = true;
       }
-    } else {
+    } else if (!airborne) {
       const rockYGap = Math.abs(y - GAME.playerY);
       const rockHit =
         rockYGap < obstacle.height * 0.3 + GAME.playerRadius * 0.65 &&
         xGap < obstacle.width * 0.25 + GAME.playerRadius * 0.7;
       if (rockHit && obstacle.type === "largeRock") {
         fatal = true;
-      } else if (rockHit && !airborne) {
+      } else if (rockHit) {
         obstacle.hit = true;
         model.speed = Math.max(GAME.minSpeed, model.speed - 20);
         model.lateralVelocity *= -0.45;
@@ -1154,6 +1380,17 @@ function collision(model: GameModel) {
     }
 
     if (fatal) {
+      if (model.shieldCharges > 0) {
+        model.shieldCharges -= 1;
+        model.shieldFlash = 0.72;
+        model.invulnerable = 1.35;
+        model.speed = Math.max(GAME.minSpeed, model.speed * 0.62);
+        model.lateralVelocity *= -0.32;
+        model.shake = 13;
+        obstacle.hit = true;
+        emitSnow(model, 34, 1.8);
+        return;
+      }
       model.status = "CRASHED";
       model.crashTime = 0;
       model.speed *= 0.25;
@@ -1173,6 +1410,7 @@ function update(
 ) {
   model.shake = Math.max(0, model.shake - dt * 34);
   model.invulnerable = Math.max(0, model.invulnerable - dt);
+  model.shieldFlash = Math.max(0, model.shieldFlash - dt);
   model.jumpCooldown = Math.max(0, model.jumpCooldown - dt);
   model.boundaryTurnCooldown = Math.max(
     0,
@@ -1470,6 +1708,7 @@ export function SnowGame() {
   const profileRef = useRef<ShopProfile>(DEFAULT_PROFILE);
   const [shopOpen, setShopOpen] = useState(false);
   const [lastReward, setLastReward] = useState(0);
+  const [lastPetBonus, setLastPetBonus] = useState(0);
 
   const syncHud = useCallback(() => {
     setHud(hudFrom(modelRef.current));
@@ -1491,7 +1730,9 @@ export function SnowGame() {
     const model = modelRef.current;
     if (model.status === "START" || model.status === "GAME_OVER") {
       resetRun(model);
+      model.shieldCharges = profileRef.current.equippedPets.includes("pet-car") ? 1 : 0;
       setLastReward(0);
+      setLastPetBonus(0);
       setShopOpen(false);
       ping(620, 0.12);
       if (profileRef.current.musicEnabled) startMusic();
@@ -1686,9 +1927,16 @@ export function SnowGame() {
         getBoard(currentProfile),
       );
       if (previousStatus !== "GAME_OVER" && model.status === "GAME_OVER") {
-        const reward = rewardForDistance(model.distance);
-        setLastReward(reward);
-        updateProfile((current) => ({ ...current, coins: current.coins + reward }));
+        const reward = rewardForRun(
+          model.distance,
+          currentProfile.equippedPets.includes("pet-digger"),
+        );
+        setLastReward(reward.total);
+        setLastPetBonus(reward.petBonus);
+        updateProfile((current) => ({
+          ...current,
+          coins: current.coins + reward.total,
+        }));
         stopMusic();
       }
       render(ctx, model, profileRef.current);
@@ -1776,6 +2024,15 @@ export function SnowGame() {
                 {hud.status === "PAUSED" ? "▶" : "Ⅱ"}
               </button>
             )}
+            {profile.equippedPets.includes("pet-car") && (
+              <div
+                className={`shield-status ${hud.shieldCharges > 0 ? "is-ready" : "is-spent"}`}
+                aria-label={hud.shieldCharges > 0 ? "车车护盾可用" : "车车护盾已使用"}
+              >
+                <span aria-hidden="true">◌</span>
+                {hud.shieldCharges > 0 ? "车车护盾" : "护盾已用"}
+              </div>
+            )}
           </div>
         )}
 
@@ -1857,6 +2114,9 @@ export function SnowGame() {
               <div className="run-reward">
                 <span>本局获得</span>
                 <strong>🥔 +{lastReward}</strong>
+                {lastPetBonus > 0 && (
+                  <em>挖挖机收益 +25%（+{lastPetBonus}）</em>
+                )}
                 <small>余额 {profile.coins.toLocaleString()}</small>
               </div>
               <button className="primary-button" type="button" onClick={start}>

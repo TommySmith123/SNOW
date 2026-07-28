@@ -28,6 +28,8 @@ export function createGame(best = 0): GameModel {
     jumpTime: -1,
     jumpCooldown: 0,
     invulnerable: 0,
+    shieldCharges: 0,
+    shieldFlash: 0,
     crashTime: 0,
     countdown: 3.8,
     nextSpawn: GAME.firstObstacleAt,

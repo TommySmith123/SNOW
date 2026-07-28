@@ -10,6 +10,17 @@ export interface ShopItem {
   color: string;
   accent?: string;
   pattern?: "classic" | "sprout" | "ice" | "comet" | "tiger" | "aurora" | "dragon" | "hyper";
+  style?:
+    | "checker"
+    | "cargo"
+    | "flame"
+    | "aurora"
+    | "puffer"
+    | "star"
+    | "pom"
+    | "cat"
+    | "trapper"
+    | "helmet";
   maxSpeed?: number;
   acceleration?: number;
 }
@@ -163,6 +174,46 @@ export const SHOP_ITEMS: ShopItem[] = [
     accent: "#6b7d87",
   },
   {
+    id: "pants-checker",
+    name: "雪线棋盘裤",
+    category: "pants",
+    price: 380,
+    description: "青柠棋盘护膝",
+    color: "#17385e",
+    accent: "#d7ff45",
+    style: "checker",
+  },
+  {
+    id: "pants-cargo",
+    name: "山地机能裤",
+    category: "pants",
+    price: 520,
+    description: "宽松工装与侧袋",
+    color: "#526044",
+    accent: "#ede3c5",
+    style: "cargo",
+  },
+  {
+    id: "pants-flame",
+    name: "赤焰雪裤",
+    category: "pants",
+    price: 720,
+    description: "黑色裤身与橙红火焰",
+    color: "#17191d",
+    accent: "#ff633c",
+    style: "flame",
+  },
+  {
+    id: "pants-aurora",
+    name: "极光流线裤",
+    category: "pants",
+    price: 900,
+    description: "深紫裤身与青蓝流线",
+    color: "#3a275f",
+    accent: "#5df2d0",
+    style: "aurora",
+  },
+  {
     id: "jacket-black",
     name: "原点连帽衫",
     category: "jacket",
@@ -193,6 +244,46 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 320,
     description: "高饱和极光黄绿",
     color: "#a8d632",
+  },
+  {
+    id: "jacket-puffer",
+    name: "薯黄羽绒服",
+    category: "jacket",
+    price: 420,
+    description: "奶油滚边横向绗缝",
+    color: "#d9a52f",
+    accent: "#fff0c7",
+    style: "puffer",
+  },
+  {
+    id: "jacket-checker",
+    name: "冰湖棋盘衣",
+    category: "jacket",
+    price: 600,
+    description: "冰蓝与深海蓝棋盘格",
+    color: "#61b9d2",
+    accent: "#17385e",
+    style: "checker",
+  },
+  {
+    id: "jacket-flame",
+    name: "赤焰冲锋衣",
+    category: "jacket",
+    price: 840,
+    description: "黑色衣身与红橙火焰",
+    color: "#17191d",
+    accent: "#ff563c",
+    style: "flame",
+  },
+  {
+    id: "jacket-star",
+    name: "薯星夜行衣",
+    category: "jacket",
+    price: 1100,
+    description: "荧光薯星与夜空星点",
+    color: "#30214f",
+    accent: "#d7ff45",
+    style: "star",
   },
   {
     id: "goggles-graphite",
@@ -263,11 +354,51 @@ export const SHOP_ITEMS: ShopItem[] = [
     color: "#5e9fc2",
   },
   {
+    id: "hat-pom",
+    name: "奶油绒球帽",
+    category: "hat",
+    price: 340,
+    description: "莓红翻边与柔软绒球",
+    color: "#eee2ca",
+    accent: "#a8394d",
+    style: "pom",
+  },
+  {
+    id: "hat-cat",
+    name: "金渐层猫耳帽",
+    category: "hat",
+    price: 480,
+    description: "暖金色猫耳轮廓",
+    color: "#d6a55e",
+    accent: "#755033",
+    style: "cat",
+  },
+  {
+    id: "hat-trapper",
+    name: "雪原护耳帽",
+    category: "hat",
+    price: 650,
+    description: "奶油毛边与双侧护耳",
+    color: "#53634b",
+    accent: "#f1dfbe",
+    style: "trapper",
+  },
+  {
+    id: "hat-helmet",
+    name: "薯星竞速盔",
+    category: "hat",
+    price: 880,
+    description: "流线硬壳与青柠星纹",
+    color: "#332254",
+    accent: "#d7ff45",
+    style: "helmet",
+  },
+  {
     id: "pet-digger",
     name: "挖挖机",
     category: "pet",
     price: 360,
-    description: "橘色仓鼠 · 购买后可跟随滑雪",
+    description: "橘色仓鼠 · 跟随时本局薯薯币 +25%",
     color: "#e98732",
     accent: "#ffe1ad",
   },
@@ -276,7 +407,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: "车车",
     category: "pet",
     price: 520,
-    description: "金渐层猫 · 绿色眼睛与蓬松尾巴",
+    description: "金渐层猫 · 跟随时开局获得一次护盾",
     color: "#d9ad67",
     accent: "#70543d",
   },
@@ -314,6 +445,12 @@ export function getBoard(profile: ShopProfile): ShopItem {
 
 export function rewardForDistance(distance: number): number {
   return 15 + Math.floor(Math.max(0, distance) / 10);
+}
+
+export function rewardForRun(distance: number, hasDigger: boolean) {
+  const base = rewardForDistance(distance);
+  const petBonus = hasDigger ? Math.floor(base * 0.25) : 0;
+  return { base, petBonus, total: base + petBonus };
 }
 
 export function loadProfile(): ShopProfile {

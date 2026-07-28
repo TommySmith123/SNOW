@@ -87,6 +87,8 @@ export interface GameModel {
   jumpTime: number;
   jumpCooldown: number;
   invulnerable: number;
+  shieldCharges: number;
+  shieldFlash: number;
   crashTime: number;
   countdown: number;
   nextSpawn: number;

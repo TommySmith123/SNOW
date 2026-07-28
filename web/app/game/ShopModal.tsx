@@ -117,6 +117,7 @@ export function ShopModal({
                 <div
                   className={`item-preview is-${item.category}`}
                   data-pattern={item.pattern}
+                  data-style={item.style}
                   style={{
                     "--item-color": item.color,
                     "--item-accent": item.accent ?? item.color,
@@ -144,7 +145,7 @@ export function ShopModal({
         </div>
 
         <p className="shop-note">
-          服装只改变外观；雪板会改变最高速度与加速度。宠物可分别跟随或休息。
+          服装只改变外观；雪板会改变最高速度与加速度。挖挖机增加结算收入，车车提供一次护盾；宠物休息时收益不生效。
         </p>
 
         <button
