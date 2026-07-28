@@ -211,6 +211,140 @@ function drawCrevasse(
   ctx.restore();
 }
 
+function snowboardPath(ctx: CanvasRenderingContext2D, brake: boolean) {
+  ctx.beginPath();
+  ctx.moveTo(brake ? -38 : -32, 22);
+  ctx.quadraticCurveTo(brake ? -44 : -38, 27.5, brake ? -35 : -29, 33);
+  ctx.lineTo(brake ? 35 : 30, 33);
+  ctx.quadraticCurveTo(brake ? 44 : 38, 27.5, brake ? 38 : 33, 22);
+  ctx.closePath();
+}
+
+function drawSnowboardPattern(
+  ctx: CanvasRenderingContext2D,
+  board: ShopItem,
+  brake: boolean,
+) {
+  const left = brake ? -39 : -33;
+  const right = brake ? 39 : 34;
+  const accent = board.accent ?? "#fff";
+
+  ctx.save();
+  snowboardPath(ctx, brake);
+  ctx.clip();
+  ctx.strokeStyle = accent;
+  ctx.fillStyle = accent;
+  ctx.lineCap = "round";
+
+  switch (board.pattern) {
+    case "sprout":
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(left + 10, 32);
+      ctx.quadraticCurveTo(0, 23, right - 9, 32);
+      ctx.stroke();
+      for (const x of [-17, -3, 12]) {
+        ctx.beginPath();
+        ctx.ellipse(x, 27, 4.5, 2.2, x < 0 ? -0.45 : 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case "ice":
+      ctx.lineWidth = 2;
+      for (const x of [-25, -7, 11]) {
+        ctx.beginPath();
+        ctx.moveTo(x, 23);
+        ctx.lineTo(x + 9, 28);
+        ctx.lineTo(x + 3, 33);
+        ctx.stroke();
+      }
+      break;
+    case "comet":
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(left + 7, 31);
+      ctx.quadraticCurveTo(-1, 23, right - 9, 26);
+      ctx.stroke();
+      for (const [x, y, radius] of [[-18, 25, 1.2], [8, 30, 1.4], [23, 25, 1]] as const) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case "tiger":
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 4;
+      for (let x = left - 3; x < right + 6; x += 13) {
+        ctx.beginPath();
+        ctx.moveTo(x, 22);
+        ctx.lineTo(x + 8, 33);
+        ctx.stroke();
+      }
+      break;
+    case "aurora": {
+      const aurora = ctx.createLinearGradient(left, 24, right, 31);
+      aurora.addColorStop(0, "#54f2c1");
+      aurora.addColorStop(0.5, "#73b6ff");
+      aurora.addColorStop(1, "#ef59ff");
+      ctx.strokeStyle = aurora;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(left, 30);
+      ctx.bezierCurveTo(-20, 21, -4, 34, 10, 25);
+      ctx.bezierCurveTo(20, 20, 27, 31, right, 24);
+      ctx.stroke();
+      break;
+    }
+    case "dragon":
+      ctx.lineWidth = 1.8;
+      for (let x = left + 4; x < right; x += 8) {
+        ctx.beginPath();
+        ctx.arc(x, 31, 5, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(left + 5, 25);
+      ctx.lineTo(right - 5, 30);
+      ctx.stroke();
+      break;
+    case "hyper":
+      for (const [x, y, radius, color] of [
+        [-22, 25, 1, "#fff"],
+        [-10, 31, 1.2, "#65eaff"],
+        [18, 25, 1.1, "#ffe86a"],
+        [27, 30, 0.9, "#fff"],
+      ] as const) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = "#ef59ff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-5, 23);
+      ctx.lineTo(-2, 27);
+      ctx.lineTo(3, 28);
+      ctx.lineTo(-1, 30);
+      ctx.lineTo(-3, 33);
+      ctx.lineTo(-6, 30);
+      ctx.lineTo(-11, 28);
+      ctx.lineTo(-6, 27);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    case "classic":
+    default:
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(left + 4, 27.5);
+      ctx.lineTo(right - 4, 27.5);
+      ctx.stroke();
+      break;
+  }
+  ctx.restore();
+}
+
 function drawBoarder(
   ctx: CanvasRenderingContext2D,
   model: GameModel,
@@ -406,25 +540,15 @@ function drawBoarder(
   }
   ctx.restore();
 
-  // A conventional snowboard: solid deck, metal edge and two bindings.
+  // A conventional snowboard with a pattern shared by its shop preview.
   ctx.strokeStyle = "#071b2b";
   ctx.fillStyle = boardStyle.color;
   ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(brake ? -38 : -32, 24);
-  ctx.quadraticCurveTo(brake ? -42 : -36, 28, brake ? -35 : -29, 31);
-  ctx.lineTo(brake ? 35 : 30, 31);
-  ctx.quadraticCurveTo(brake ? 42 : 36, 28, brake ? 38 : 33, 24);
-  ctx.closePath();
+  snowboardPath(ctx, brake);
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = boardStyle.accent ?? "rgba(255,255,255,.72)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(brake ? -34 : -29, 28);
-  ctx.lineTo(brake ? 34 : 30, 28);
-  ctx.stroke();
+  drawSnowboardPattern(ctx, boardStyle, brake);
 
   ctx.strokeStyle = "#1c252d";
   ctx.lineWidth = 3;
@@ -521,6 +645,31 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
   };
 }
 
+function drawPetEye(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radiusX: number,
+  radiusY: number,
+  iris: string,
+) {
+  ctx.fillStyle = iris;
+  ctx.strokeStyle = "#49301f";
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  ctx.ellipse(x, y, radiusX, radiusY, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#17150f";
+  ctx.beginPath();
+  ctx.ellipse(x + 0.4, y + 0.2, radiusX * 0.42, radiusY * 0.78, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(x - radiusX * 0.28, y - radiusY * 0.32, Math.max(0.8, radiusX * 0.3), 0, Math.PI * 2);
+  ctx.fill();
+}
+
 function drawHamster(
   ctx: CanvasRenderingContext2D,
   position: ReturnType<typeof trailPosition>,
@@ -529,93 +678,97 @@ function drawHamster(
   const hop = (Math.sin(phase) + 1) * 0.65;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
-  ctx.rotate(position.angle + 0.28);
+  ctx.rotate(position.angle + 0.22);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(0, 19 + hop, 17, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(1, 20 + hop, 18, 5.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#ef9b38";
-  ctx.strokeStyle = "#6f351d";
-  ctx.lineWidth = 2.4;
-  ctx.beginPath();
-  ctx.arc(-14, -8, 4.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  const hamsterCoat = ctx.createLinearGradient(-14, -16, 13, 18);
-  hamsterCoat.addColorStop(0, "#f7aa43");
-  hamsterCoat.addColorStop(0.58, "#da7628");
-  hamsterCoat.addColorStop(1, "#a84b1d");
+  // Poster-style plush orange body with a darker saddle.
+  const hamsterCoat = ctx.createLinearGradient(-18, -14, 15, 18);
+  hamsterCoat.addColorStop(0, "#ffc45d");
+  hamsterCoat.addColorStop(0.48, "#ee9236");
+  hamsterCoat.addColorStop(1, "#bd5c24");
   ctx.fillStyle = hamsterCoat;
-  ctx.strokeStyle = "#6f351d";
-  ctx.lineWidth = 2.6;
+  ctx.strokeStyle = "#70401f";
+  ctx.lineWidth = 2.7;
   ctx.beginPath();
-  ctx.ellipse(-4, -1, 15, 19, -0.24, 0, Math.PI * 2);
+  ctx.ellipse(-3, 1, 17.5, 17, -0.23, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  // Head leads down and to the right for a three-quarter downhill view.
-  ctx.fillStyle = "#e98732";
+  ctx.strokeStyle = "rgba(113,55,26,.55)";
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(7, 8, 12.5, 11.5, 0.22, 0, Math.PI * 2);
+  ctx.arc(-8, -1, 9, -1.2, 0.35);
+  ctx.moveTo(-7, -9);
+  ctx.quadraticCurveTo(-2, -2, -5, 8);
+  ctx.stroke();
+
+  ctx.fillStyle = "#fff0c7";
+  ctx.beginPath();
+  ctx.ellipse(-2, 7, 11, 9.5, -0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head leads downhill but keeps the poster's round cheeks and open expression.
+  ctx.fillStyle = "#ef963a";
+  ctx.strokeStyle = "#70401f";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(8, 6, 13.5, 12.5, 0.16, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  for (const [earX, earY, size] of [[0, -1, 5.5], [13, 0, 5]] as const) {
-    ctx.fillStyle = "#e98732";
+  for (const [earX, earY, size] of [[1, -3, 5.4], [14, -2, 5]] as const) {
+    ctx.fillStyle = "#ef963a";
     ctx.beginPath();
     ctx.arc(earX, earY, size, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#f3a18f";
+    ctx.fillStyle = "#f4a69a";
     ctx.beginPath();
     ctx.arc(earX + 0.5, earY + 0.5, size * 0.5, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.fillStyle = "#ffe1ad";
+  ctx.fillStyle = "#fff1cc";
   ctx.beginPath();
-  ctx.ellipse(10, 12, 8, 6.5, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(8.7, 12, 10.2, 7.2, 0.14, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fff9ec";
+  ctx.fillStyle = "rgba(255,255,255,.55)";
   ctx.beginPath();
-  ctx.ellipse(2, 8, 5, 4.2, 0.1, 0, Math.PI * 2);
+  ctx.ellipse(2.8, 8.8, 5.5, 5.2, 0.1, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#071b2b";
+  drawPetEye(ctx, 3.1, 5.1, 2.35, 3, "#18150f");
+  drawPetEye(ctx, 11.8, 4.8, 2.8, 3.5, "#18150f");
+
+  ctx.fillStyle = "#dc6c6d";
   ctx.beginPath();
-  ctx.arc(10, 6, 2.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(3, 5, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(10.7, 5.3, 0.75, 0, Math.PI * 2);
+  ctx.arc(17.2, 11.5, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#ef7c72";
-  ctx.beginPath();
-  ctx.arc(16, 12, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = "#75472d";
+  ctx.strokeStyle = "#70401f";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(11, 12);
-  ctx.lineTo(23, 8);
-  ctx.moveTo(11, 14);
-  ctx.lineTo(23, 16);
+  ctx.moveTo(14.5, 12.2);
+  ctx.quadraticCurveTo(13.2, 16.5, 9.5, 15);
+  ctx.moveTo(14.3, 11.5);
+  ctx.lineTo(24, 8);
+  ctx.moveTo(14.3, 13);
+  ctx.lineTo(24, 16);
   ctx.stroke();
 
-  ctx.fillStyle = "#ffe1ad";
-  for (const [pawX, pawY] of [[3, 16], [11, 18]] as const) {
+  ctx.fillStyle = "#ffe1a3";
+  ctx.strokeStyle = "#70401f";
+  ctx.lineWidth = 1.3;
+  for (const [pawX, pawY] of [[4, 17], [13, 18]] as const) {
     ctx.beginPath();
-    ctx.ellipse(pawX, pawY, 4, 3, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(pawX, pawY, 4.8, 3.4, 0.2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -628,111 +781,127 @@ function drawGoldenCat(
   const hop = (Math.sin(phase) + 1) * 0.5;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
-  ctx.rotate(position.angle + 0.2);
+  ctx.rotate(position.angle + 0.17);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(1, 24 + hop, 20, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(1, 23 + hop, 22, 6.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Warm golden coat and a tail trailing uphill identify Cheche at a glance.
-  ctx.strokeStyle = "#a47a43";
-  ctx.lineWidth = 9;
+  // Thick upright tail and rounded silhouette mirror Cheche on the poster.
+  ctx.strokeStyle = "#6f4827";
+  ctx.lineWidth = 13;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-11, -9);
-  ctx.bezierCurveTo(-27, -13, -27, -30, -11, -25);
+  ctx.moveTo(-12, 3);
+  ctx.bezierCurveTo(-29, -3, -28, -25, -13, -29);
   ctx.stroke();
-  ctx.strokeStyle = "#5c493a";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#d6a356";
+  ctx.lineWidth = 8.5;
   ctx.beginPath();
-  ctx.moveTo(-20, -22);
-  ctx.lineTo(-14, -18);
+  ctx.moveTo(-12, 2);
+  ctx.bezierCurveTo(-25, -5, -24, -21, -13, -26);
   ctx.stroke();
-
-  const coat = ctx.createLinearGradient(-14, -18, 14, 20);
-  coat.addColorStop(0, "#8a6845");
-  coat.addColorStop(0.38, "#b88c50");
-  coat.addColorStop(0.72, "#d9ad67");
-  coat.addColorStop(1, "#f0cf91");
-  ctx.fillStyle = coat;
-  ctx.strokeStyle = "#4d3e33";
-  ctx.lineWidth = 2.8;
-  ctx.beginPath();
-  ctx.ellipse(-4, -1, 16, 22, -0.27, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "#d5a45e";
-  ctx.strokeStyle = "#4d3e33";
-  ctx.beginPath();
-  ctx.moveTo(0, 3);
-  ctx.lineTo(1, -12);
-  ctx.lineTo(8, 0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(13, 4);
-  ctx.lineTo(17, -9);
-  ctx.lineTo(20, 7);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "#dfb56f";
-  ctx.beginPath();
-  ctx.ellipse(8, 10, 14, 13, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "#f5dfb8";
-  ctx.beginPath();
-  ctx.ellipse(12, 15, 8, 6, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#8bca58";
-  ctx.beginPath();
-  ctx.ellipse(11, 8, 2.7, 3.4, 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(4, 7, 1.8, 2.5, 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#172019";
-  ctx.beginPath();
-  ctx.ellipse(11.3, 8, 0.8, 2.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#9c5c61";
-  ctx.beginPath();
-  ctx.moveTo(17, 14);
-  ctx.lineTo(21, 14);
-  ctx.lineTo(19, 17);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = "#70543d";
-  ctx.lineWidth = 2;
-  for (const [stripeX, stripeY] of [[0, 1], [5, 0], [10, 1]] as const) {
+  ctx.strokeStyle = "#9a652f";
+  ctx.lineWidth = 2.5;
+  for (const [x1, y1, x2, y2] of [[-22, -8, -16, -5], [-23, -16, -16, -13], [-19, -24, -13, -20]] as const) {
     ctx.beginPath();
-    ctx.moveTo(stripeX, stripeY);
-    ctx.lineTo(stripeX + 1, stripeY + 5);
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "rgba(82, 62, 44, .82)";
-  ctx.lineWidth = 1.5;
+  const coat = ctx.createLinearGradient(-14, -18, 14, 20);
+  coat.addColorStop(0, "#b77836");
+  coat.addColorStop(0.38, "#d89f50");
+  coat.addColorStop(0.72, "#efc879");
+  coat.addColorStop(1, "#f7dda1");
+  ctx.fillStyle = coat;
+  ctx.strokeStyle = "#704729";
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
-  ctx.moveTo(14, 15);
-  ctx.lineTo(27, 11);
-  ctx.moveTo(14, 17);
-  ctx.lineTo(27, 19);
+  ctx.ellipse(-3, 2, 20, 17.5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#e0b975";
-  for (const [pawX, pawY] of [[5, 21], [15, 22]] as const) {
+  ctx.fillStyle = "#fff0c9";
+  ctx.beginPath();
+  ctx.ellipse(-1, 10, 12, 8, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#9a652f";
+  ctx.lineWidth = 2.2;
+  for (const [sx, sy] of [[-13, -6], [-8, -10], [-2, -11]] as const) {
     ctx.beginPath();
-    ctx.ellipse(pawX, pawY, 6, 4, 0.15, 0, Math.PI * 2);
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(sx + 5, sy + 3, sx + 6, sy + 8);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#dda653";
+  ctx.strokeStyle = "#704729";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-1, 2);
+  ctx.lineTo(1, -12);
+  ctx.lineTo(9, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(14, 3);
+  ctx.lineTo(20, -10);
+  ctx.lineTo(23, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#e7b761";
+  ctx.beginPath();
+  ctx.ellipse(10, 8, 15.5, 14.5, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#fff0ce";
+  ctx.beginPath();
+  ctx.ellipse(12, 14, 10, 7, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawPetEye(ctx, 4.5, 6.4, 3.1, 4.1, "#9bcf49");
+  drawPetEye(ctx, 15, 6.8, 3.6, 4.5, "#9bcf49");
+
+  ctx.fillStyle = "#c96f70";
+  ctx.beginPath();
+  ctx.moveTo(15, 13);
+  ctx.lineTo(20, 13);
+  ctx.lineTo(17.5, 16);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "#704729";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(17.4, 16);
+  ctx.quadraticCurveTo(14.5, 19.5, 12, 16.8);
+  ctx.moveTo(17.6, 16);
+  ctx.quadraticCurveTo(20.5, 19.5, 22.5, 16.5);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(92, 60, 35, .82)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(15, 15);
+  ctx.lineTo(29, 11);
+  ctx.moveTo(15, 17);
+  ctx.lineTo(29, 20);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f9d995";
+  ctx.strokeStyle = "#704729";
+  ctx.lineWidth = 1.5;
+  for (const [pawX, pawY] of [[5, 20], [17, 21]] as const) {
+    ctx.beginPath();
+    ctx.ellipse(pawX, pawY, 7, 4.8, 0.15, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
@@ -1211,9 +1380,15 @@ function useAudio() {
       if (!audio) return;
 
       const master = audio.createGain();
+      const compressor = audio.createDynamicsCompressor();
+      compressor.threshold.setValueAtTime(-18, audio.currentTime);
+      compressor.knee.setValueAtTime(18, audio.currentTime);
+      compressor.ratio.setValueAtTime(7, audio.currentTime);
+      compressor.attack.setValueAtTime(0.004, audio.currentTime);
+      compressor.release.setValueAtTime(0.24, audio.currentTime);
       master.gain.setValueAtTime(0.0001, audio.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.055, audio.currentTime + 0.3);
-      master.connect(audio.destination);
+      master.gain.exponentialRampToValueAtTime(0.24, audio.currentTime + 0.3);
+      master.connect(compressor).connect(audio.destination);
       musicGainRef.current = master;
 
       const beat = 60 / 118 / 2;

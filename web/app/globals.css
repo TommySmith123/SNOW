@@ -558,6 +558,60 @@ button {
   height: 0.72rem;
   border-radius: 99px;
   transform: rotate(-18deg);
+  background-color: var(--item-color);
+  background-size: 100% 100%;
+}
+
+.item-preview.is-board[data-pattern="classic"]::before {
+  background-image:
+    linear-gradient(90deg, transparent 43%, var(--item-accent) 43% 57%, transparent 57%),
+    linear-gradient(135deg, rgba(255,255,255,.24), transparent 45%);
+}
+
+.item-preview.is-board[data-pattern="sprout"]::before {
+  background-image:
+    radial-gradient(ellipse at 37% 30%, var(--item-accent) 0 12%, transparent 14%),
+    radial-gradient(ellipse at 57% 68%, var(--item-accent) 0 13%, transparent 15%),
+    linear-gradient(115deg, transparent 45%, rgba(22,91,54,.78) 46% 52%, transparent 53%);
+}
+
+.item-preview.is-board[data-pattern="ice"]::before {
+  background-image:
+    linear-gradient(135deg, transparent 16%, var(--item-accent) 17% 25%, transparent 26% 48%, var(--item-accent) 49% 58%, transparent 59%),
+    linear-gradient(45deg, rgba(255,255,255,.5), transparent 55%);
+}
+
+.item-preview.is-board[data-pattern="comet"]::before {
+  background-image:
+    radial-gradient(circle at 72% 32%, #fff 0 5%, transparent 7%),
+    radial-gradient(circle at 28% 68%, var(--item-accent) 0 7%, transparent 9%),
+    linear-gradient(105deg, transparent 24%, var(--item-accent) 26% 32%, transparent 34% 42%, rgba(255,255,255,.65) 44% 48%, transparent 50%);
+}
+
+.item-preview.is-board[data-pattern="tiger"]::before {
+  background-image: repeating-linear-gradient(115deg, transparent 0 14%, var(--item-accent) 15% 25%, transparent 26% 39%);
+}
+
+.item-preview.is-board[data-pattern="aurora"]::before {
+  background-image:
+    radial-gradient(ellipse at 28% 68%, rgba(239,89,255,.8) 0 12%, transparent 36%),
+    radial-gradient(ellipse at 68% 28%, var(--item-accent) 0 15%, transparent 42%),
+    linear-gradient(100deg, transparent 20%, rgba(255,255,255,.68) 24% 28%, transparent 31%);
+}
+
+.item-preview.is-board[data-pattern="dragon"]::before {
+  background-image:
+    repeating-radial-gradient(ellipse at 45% 110%, transparent 0 15%, rgba(255,208,90,.88) 17% 22%, transparent 24% 32%),
+    linear-gradient(90deg, transparent 38%, var(--item-accent) 40% 46%, transparent 48%);
+}
+
+.item-preview.is-board[data-pattern="hyper"]::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, #fff 0 4%, var(--item-accent) 5% 10%, transparent 12%),
+    linear-gradient(15deg, transparent 45%, #65eaff 47% 51%, transparent 53%),
+    linear-gradient(105deg, transparent 44%, var(--item-accent) 46% 52%, transparent 54%),
+    radial-gradient(circle at 18% 26%, #fff 0 3%, transparent 5%),
+    radial-gradient(circle at 82% 72%, #ffe86a 0 3%, transparent 5%);
 }
 
 .item-preview.is-goggles::before {
@@ -588,9 +642,194 @@ button {
   display: none;
 }
 
-.item-preview.is-pet span {
-  font-size: 2rem;
-  transform: rotate(-8deg);
+.pet-portrait,
+.pet-portrait span {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+}
+
+.pet-portrait {
+  width: 3rem;
+  height: 2.75rem;
+  transform: rotate(-7deg);
+  filter: drop-shadow(0 0.2rem 0.12rem rgba(0, 0, 0, 0.28));
+}
+
+.pet-portrait span {
+  border-color: #70431f;
+}
+
+.pet-portrait .pet-body {
+  left: 0.22rem;
+  bottom: 0.16rem;
+  width: 2.12rem;
+  height: 1.72rem;
+  overflow: hidden;
+  border: 0.12rem solid #70431f;
+  border-radius: 58% 52% 48% 56%;
+  background: linear-gradient(145deg, #f8b44e, #c96a25);
+}
+
+.pet-portrait .pet-head {
+  z-index: 3;
+  right: 0.03rem;
+  bottom: 0.12rem;
+  width: 1.72rem;
+  height: 1.58rem;
+  border: 0.12rem solid #70431f;
+  border-radius: 48% 54% 50% 50%;
+  background: linear-gradient(145deg, #f8b34a, #dd7a2c);
+}
+
+.pet-portrait .pet-ear {
+  z-index: -1;
+  top: -0.42rem;
+  width: 0.64rem;
+  height: 0.64rem;
+  border: 0.11rem solid #70431f;
+  border-radius: 50%;
+  background: #ed8f3c;
+  box-shadow: inset 0 0 0 0.12rem #f5aca1;
+}
+
+.pet-portrait .pet-ear-left {
+  left: 0.06rem;
+}
+
+.pet-portrait .pet-ear-right {
+  right: 0.04rem;
+}
+
+.pet-portrait .pet-face-patch {
+  left: 0.15rem;
+  bottom: 0.08rem;
+  width: 1.31rem;
+  height: 0.82rem;
+  border-radius: 46% 54% 50% 50%;
+  background: #fff0cc;
+}
+
+.pet-portrait .pet-eye {
+  z-index: 5;
+  top: 0.38rem;
+  width: 0.32rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: #14120e;
+  box-shadow: inset 0.09rem 0.08rem 0 #fff;
+}
+
+.pet-portrait .pet-eye-left {
+  left: 0.34rem;
+}
+
+.pet-portrait .pet-eye-right {
+  right: 0.3rem;
+}
+
+.pet-portrait .pet-nose {
+  z-index: 6;
+  left: 0.74rem;
+  bottom: 0.35rem;
+  width: 0.24rem;
+  height: 0.18rem;
+  border-radius: 50% 50% 60% 60%;
+  background: #d7656d;
+}
+
+.pet-portrait .pet-paw {
+  z-index: 6;
+  bottom: 0;
+  width: 0.68rem;
+  height: 0.42rem;
+  border: 0.1rem solid #70431f;
+  border-radius: 50%;
+  background: #ffe1a3;
+}
+
+.pet-portrait .pet-paw-left {
+  right: 0.82rem;
+}
+
+.pet-portrait .pet-paw-right {
+  right: 0.08rem;
+}
+
+.pet-portrait.is-hamster .pet-tail {
+  display: none;
+}
+
+.pet-portrait.is-hamster .pet-stripe {
+  width: 0.2rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  background: rgba(116, 54, 25, 0.42);
+  transform: rotate(-18deg);
+}
+
+.pet-portrait.is-hamster .pet-stripe-one {
+  left: 0.58rem;
+}
+
+.pet-portrait.is-hamster .pet-stripe-two {
+  left: 0.93rem;
+}
+
+.pet-portrait.is-golden-cat {
+  width: 3.12rem;
+}
+
+.pet-portrait.is-golden-cat .pet-body {
+  width: 2.22rem;
+  height: 1.62rem;
+  background: linear-gradient(145deg, #f5c66f, #c58b43);
+}
+
+.pet-portrait.is-golden-cat .pet-head {
+  border-radius: 48%;
+  background: linear-gradient(145deg, #f5c76f, #d49a4d);
+}
+
+.pet-portrait.is-golden-cat .pet-ear {
+  border-radius: 18% 82% 38% 62%;
+  background: #d99d50;
+  box-shadow: inset 0 0 0 0.12rem #efb2a0;
+}
+
+.pet-portrait.is-golden-cat .pet-eye {
+  background: #8ecb45;
+  box-shadow: inset 0.1rem 0.06rem 0 #fff, inset -0.08rem 0 0 #182114;
+}
+
+.pet-portrait.is-golden-cat .pet-tail {
+  z-index: -1;
+  left: -0.18rem;
+  top: -0.12rem;
+  width: 1.18rem;
+  height: 1.75rem;
+  border: 0.28rem solid #a86f31;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 70% 40% 0 0;
+  transform: rotate(-28deg);
+}
+
+.pet-portrait.is-golden-cat .pet-stripe {
+  top: 0.12rem;
+  width: 0.18rem;
+  height: 0.64rem;
+  border-radius: 50%;
+  background: #9c642d;
+  transform: rotate(-28deg);
+}
+
+.pet-portrait.is-golden-cat .pet-stripe-one {
+  left: 0.68rem;
+}
+
+.pet-portrait.is-golden-cat .pet-stripe-two {
+  left: 1.12rem;
 }
 
 .item-copy {

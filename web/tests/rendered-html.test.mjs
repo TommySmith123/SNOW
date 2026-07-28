@@ -56,8 +56,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   ]);
 
   assert.match(config, /minSpeed:\s*30/);
-  assert.match(config, /maxSpeed:\s*152/);
-  assert.match(config, /acceleration:\s*18/);
+  assert.match(config, /maxSpeed:\s*150/);
+  assert.match(config, /acceleration:\s*16/);
   assert.match(config, /edgeAcceleration/);
   assert.match(config, /jumpDuration:\s*1\.04/);
   assert.match(config, /boundaryTurnLock/);
@@ -89,7 +89,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /Keep longitudinal lag monotonic/);
   assert.doesNotMatch(game, /perpendicularY/);
   assert.match(game, /Start a fresh segment after take-off/);
-  assert.match(game, /conventional snowboard/);
+  assert.match(game, /pattern shared by its shop preview/);
   assert.doesNotMatch(game, /rgba\(104, 191, 214/);
   assert.doesNotMatch(game, /rgba\(119, 202, 222/);
   assert.match(game, /key === "k"/);
@@ -99,17 +99,23 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.stance = "tuck"/);
   assert.match(game, /model\.stance = "brake"/);
   assert.match(game, /startMusic/);
+  assert.match(game, /createDynamicsCompressor/);
+  assert.match(game, /exponentialRampToValueAtTime\(0\.24/);
   assert.match(game, /rewardForDistance/);
   assert.match(game, /getBoard\(currentProfile\)/);
   assert.doesNotMatch(game, /offTrack > 68/);
   assert.match(shop, /shushu-profile-v2/);
   assert.match(shop, /15 \+ Math\.floor\(Math\.max\(0, distance\) \/ 10\)/);
-  assert.match(shop, /id: "board-comet"[\s\S]*maxSpeed: 182[\s\S]*acceleration: 22/);
+  assert.match(shop, /id: "board-comet"[\s\S]*maxSpeed: 215[\s\S]*acceleration: 27/);
+  assert.match(shop, /id: "board-hyper"[\s\S]*maxSpeed: 305[\s\S]*acceleration: 36/);
+  assert.equal((shop.match(/category: "board"/g) ?? []).length, 8);
   assert.match(shop, /name: "挖挖机"/);
   assert.match(shop, /name: "车车"/);
   assert.match(shop, /coins: Math\.max\(99_999, profile\.coins\)/);
   assert.match(shopModal, /启用商城测试模式/);
   assert.match(shopModal, /服装只改变外观/);
+  assert.match(shopModal, /PetPortrait/);
+  assert.doesNotMatch(shopModal, /🐹|🐈/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });

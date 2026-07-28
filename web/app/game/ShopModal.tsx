@@ -19,6 +19,29 @@ const CATEGORIES: Array<{ id: ShopCategory; label: string }> = [
   { id: "pet", label: "宠物" },
 ];
 
+function PetPortrait({ id }: { id: string }) {
+  const hamster = id === "pet-digger";
+  return (
+    <span className={`pet-portrait ${hamster ? "is-hamster" : "is-golden-cat"}`}>
+      <span className="pet-tail" />
+      <span className="pet-body">
+        <span className="pet-stripe pet-stripe-one" />
+        <span className="pet-stripe pet-stripe-two" />
+      </span>
+      <span className="pet-head">
+        <span className="pet-ear pet-ear-left" />
+        <span className="pet-ear pet-ear-right" />
+        <span className="pet-face-patch" />
+        <span className="pet-eye pet-eye-left" />
+        <span className="pet-eye pet-eye-right" />
+        <span className="pet-nose" />
+      </span>
+      <span className="pet-paw pet-paw-left" />
+      <span className="pet-paw pet-paw-right" />
+    </span>
+  );
+}
+
 function actionLabel(item: ShopItem, profile: ShopProfile) {
   const owned = profile.ownedItemIds.includes(item.id);
   if (!owned) {
@@ -93,13 +116,14 @@ export function ShopModal({
               <article className={`shop-item ${current ? "is-current" : ""}`} key={item.id}>
                 <div
                   className={`item-preview is-${item.category}`}
+                  data-pattern={item.pattern}
                   style={{
                     "--item-color": item.color,
                     "--item-accent": item.accent ?? item.color,
                   } as CSSProperties}
                   aria-hidden="true"
                 >
-                  {item.category === "pet" && <span>{item.id === "pet-digger" ? "🐹" : "🐈"}</span>}
+                  {item.category === "pet" && <PetPortrait id={item.id} />}
                 </div>
                 <div className="item-copy">
                   <h3>{item.name}</h3>
