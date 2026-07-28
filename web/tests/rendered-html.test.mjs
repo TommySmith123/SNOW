@@ -35,6 +35,9 @@ test("server renders the playable Shushu Snowline shell", async () => {
   assert.match(html, /SPACE/);
   assert.match(html, /K \/ L/);
   assert.match(html, /本地最佳/);
+  assert.match(html, /薯薯商城/);
+  assert.match(html, /薯薯币/);
+  assert.match(html, /音乐[\s\S]{0,20}开/);
   assert.match(html, /brand-title-cn/);
   assert.match(html, />薯薯<\/span>/);
   assert.match(html, />雪线<\/span>/);
@@ -42,10 +45,12 @@ test("server renders the playable Shushu Snowline shell", async () => {
 });
 
 test("keeps core game contracts explicit and configurable", async () => {
-  const [config, engine, game, layout, packageJson] = await Promise.all([
+  const [config, engine, game, shop, shopModal, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/game/config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/SnowGame.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/game/shop.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/game/ShopModal.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
@@ -78,9 +83,11 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.trackMarks\.push/);
   assert.match(game, /boardContact\(model\)/);
   assert.match(game, /drawHamster/);
-  assert.match(game, /drawBlueGoldenCat/);
+  assert.match(game, /drawGoldenCat/);
   assert.match(game, /drawPawPrints/);
   assert.match(game, /tangentStart/);
+  assert.match(game, /Keep longitudinal lag monotonic/);
+  assert.doesNotMatch(game, /perpendicularY/);
   assert.match(game, /Start a fresh segment after take-off/);
   assert.match(game, /conventional snowboard/);
   assert.doesNotMatch(game, /rgba\(104, 191, 214/);
@@ -91,7 +98,18 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.doesNotMatch(game, /key === "s"/);
   assert.match(game, /model\.stance = "tuck"/);
   assert.match(game, /model\.stance = "brake"/);
+  assert.match(game, /startMusic/);
+  assert.match(game, /rewardForDistance/);
+  assert.match(game, /getBoard\(currentProfile\)/);
   assert.doesNotMatch(game, /offTrack > 68/);
+  assert.match(shop, /shushu-profile-v2/);
+  assert.match(shop, /15 \+ Math\.floor\(Math\.max\(0, distance\) \/ 10\)/);
+  assert.match(shop, /id: "board-comet"[\s\S]*maxSpeed: 182[\s\S]*acceleration: 22/);
+  assert.match(shop, /name: "挖挖机"/);
+  assert.match(shop, /name: "车车"/);
+  assert.match(shop, /coins: Math\.max\(99_999, profile\.coins\)/);
+  assert.match(shopModal, /启用商城测试模式/);
+  assert.match(shopModal, /服装只改变外观/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });

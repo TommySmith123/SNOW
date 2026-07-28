@@ -8,6 +8,7 @@ import {
   type InputState,
   type Obstacle,
   type PlayerStance,
+  type TrackMark,
 } from "./config";
 import {
   createGame,
@@ -23,6 +24,19 @@ import {
   trackCenter,
   trackWidth,
 } from "./engine";
+import { ShopModal } from "./ShopModal";
+import {
+  DEFAULT_PROFILE,
+  getBoard,
+  getShopItem,
+  loadProfile,
+  rewardForDistance,
+  saveProfile,
+  unlockTestProfile,
+  type GearSlot,
+  type ShopItem,
+  type ShopProfile,
+} from "./shop";
 
 type HudState = {
   status: GameStatus;
@@ -197,8 +211,17 @@ function drawCrevasse(
   ctx.restore();
 }
 
-function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
+function drawBoarder(
+  ctx: CanvasRenderingContext2D,
+  model: GameModel,
+  profile: ShopProfile,
+) {
   const air = jumpHeight(model);
+  const boardStyle = getShopItem(profile.equipped.board);
+  const pantsStyle = getShopItem(profile.equipped.pants);
+  const jacketStyle = getShopItem(profile.equipped.jacket);
+  const gogglesStyle = getShopItem(profile.equipped.goggles);
+  const hatStyle = getShopItem(profile.equipped.hat);
   const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const y = GAME.playerY - air;
   const tuck = model.stance === "tuck" && !isAirborne(model);
@@ -263,7 +286,7 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
   ctx.stroke();
 
   // Legs and boots.
-  ctx.strokeStyle = "#071b2b";
+  ctx.strokeStyle = pantsStyle.color;
   ctx.lineCap = "round";
   ctx.lineWidth = 8;
   ctx.beginPath();
@@ -277,7 +300,7 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
   ctx.save();
   ctx.translate(tuck ? model.edge * 6 : 0, tuck ? 5 : 0);
   ctx.rotate(tuck ? -model.edge * 0.24 : brake ? model.edge * 0.12 : 0);
-  ctx.fillStyle = "#15191d";
+  ctx.fillStyle = jacketStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
   roundedRect(ctx, -15, tuck ? -19 : -23, 30, tuck ? 30 : 36, 9);
@@ -359,7 +382,7 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
   }
 
   // Black beanie and oversized dotted snow goggles.
-  ctx.fillStyle = "#111519";
+  ctx.fillStyle = hatStyle.color;
   ctx.strokeStyle = "#07090c";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -370,12 +393,12 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#4d5255";
+  ctx.fillStyle = gogglesStyle.color;
   ctx.beginPath();
   roundedRect(ctx, -12, tuck ? -42 : -52, 24, 10, 4);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = "#91a9df";
+  ctx.fillStyle = gogglesStyle.accent ?? "#91a9df";
   for (const [dotX, dotY] of [[-7, -48], [0, -45], [7, -49]]) {
     ctx.beginPath();
     ctx.arc(dotX, dotY + (tuck ? 10 : 0), 1.2, 0, Math.PI * 2);
@@ -385,7 +408,7 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
 
   // A conventional snowboard: solid deck, metal edge and two bindings.
   ctx.strokeStyle = "#071b2b";
-  ctx.fillStyle = "#e34a38";
+  ctx.fillStyle = boardStyle.color;
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(brake ? -38 : -32, 24);
@@ -396,7 +419,7 @@ function drawBoarder(ctx: CanvasRenderingContext2D, model: GameModel) {
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(255,255,255,.72)";
+  ctx.strokeStyle = boardStyle.accent ?? "rgba(255,255,255,.72)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(brake ? -34 : -29, 28);
@@ -485,15 +508,16 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
     (tangentEnd.distance - tangentStart.distance) * GAME.metersToPixels;
   const length = Math.max(1, Math.hypot(dx, dy));
   const perpendicularX = -dy / length;
-  const perpendicularY = dx / length;
 
   return {
     x: baseX + perpendicularX * sideOffset,
-    y:
-      GAME.playerY +
-      (baseDistance - model.distance) * GAME.metersToPixels +
-      perpendicularY * sideOffset,
-    angle: Math.atan2(dy, dx) - Math.PI / 2,
+    // Keep longitudinal lag monotonic. Sharp turns may move a pet sideways,
+    // but can never send it backwards/downhill to an older screen position.
+    y: GAME.playerY + (baseDistance - model.distance) * GAME.metersToPixels,
+    angle: Math.max(
+      -0.48,
+      Math.min(0.48, Math.atan2(dy, dx) - Math.PI / 2),
+    ),
   };
 }
 
@@ -505,91 +529,98 @@ function drawHamster(
   const hop = (Math.sin(phase) + 1) * 0.65;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
-  ctx.rotate(position.angle);
+  ctx.rotate(position.angle + 0.28);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(0, 18 + hop, 16, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 19 + hop, 17, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Round ears with pink centres immediately read as a hamster silhouette.
-  ctx.fillStyle = "#d87429";
+  ctx.fillStyle = "#ef9b38";
   ctx.strokeStyle = "#6f351d";
   ctx.lineWidth = 2.4;
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.arc(side * 10, -10, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#f0a08f";
-    ctx.beginPath();
-    ctx.arc(side * 10, -10, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#d87429";
-  }
+  ctx.beginPath();
+  ctx.arc(-14, -8, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 
-  const hamsterCoat = ctx.createLinearGradient(-13, -15, 12, 15);
-  hamsterCoat.addColorStop(0, "#f7a13a");
-  hamsterCoat.addColorStop(0.56, "#db7729");
-  hamsterCoat.addColorStop(1, "#aa4e20");
+  const hamsterCoat = ctx.createLinearGradient(-14, -16, 13, 18);
+  hamsterCoat.addColorStop(0, "#f7aa43");
+  hamsterCoat.addColorStop(0.58, "#da7628");
+  hamsterCoat.addColorStop(1, "#a84b1d");
   ctx.fillStyle = hamsterCoat;
   ctx.strokeStyle = "#6f351d";
   ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.ellipse(0, 2, 16, 19, 0, 0, Math.PI * 2);
+  ctx.ellipse(-4, -1, 15, 19, -0.24, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
+  // Head leads down and to the right for a three-quarter downhill view.
+  ctx.fillStyle = "#e98732";
+  ctx.beginPath();
+  ctx.ellipse(7, 8, 12.5, 11.5, 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  for (const [earX, earY, size] of [[0, -1, 5.5], [13, 0, 5]] as const) {
+    ctx.fillStyle = "#e98732";
+    ctx.beginPath();
+    ctx.arc(earX, earY, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#f3a18f";
+    ctx.beginPath();
+    ctx.arc(earX + 0.5, earY + 0.5, size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.fillStyle = "#ffe1ad";
   ctx.beginPath();
-  ctx.ellipse(0, 7, 11, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(10, 12, 8, 6.5, 0.2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#fff9ec";
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.ellipse(side * 8.5, 3, 5, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.beginPath();
+  ctx.ellipse(2, 8, 5, 4.2, 0.1, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = "#071b2b";
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.arc(side * 5.5, -2, 2.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(side * 4.8, -2.8, 0.75, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#071b2b";
-  }
+  ctx.beginPath();
+  ctx.arc(10, 6, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(3, 5, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(10.7, 5.3, 0.75, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = "#ef7c72";
   ctx.beginPath();
-  ctx.arc(0, 4, 2.3, 0, Math.PI * 2);
+  ctx.arc(16, 12, 2.2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.strokeStyle = "#75472d";
   ctx.lineWidth = 1.2;
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(side * 4, 5);
-    ctx.lineTo(side * 17, 2);
-    ctx.moveTo(side * 4, 7);
-    ctx.lineTo(side * 17, 9);
-    ctx.stroke();
-  }
+  ctx.beginPath();
+  ctx.moveTo(11, 12);
+  ctx.lineTo(23, 8);
+  ctx.moveTo(11, 14);
+  ctx.lineTo(23, 16);
+  ctx.stroke();
 
-  // Tiny pale paws finish the orange-hamster read.
   ctx.fillStyle = "#ffe1ad";
-  for (const side of [-1, 1]) {
+  for (const [pawX, pawY] of [[3, 16], [11, 18]] as const) {
     ctx.beginPath();
-    ctx.ellipse(side * 7, 15, 4, 3, side * 0.22, 0, Math.PI * 2);
+    ctx.ellipse(pawX, pawY, 4, 3, 0.2, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
 }
 
-function drawBlueGoldenCat(
+function drawGoldenCat(
   ctx: CanvasRenderingContext2D,
   position: ReturnType<typeof trailPosition>,
   phase: number,
@@ -597,112 +628,111 @@ function drawBlueGoldenCat(
   const hop = (Math.sin(phase) + 1) * 0.5;
   ctx.save();
   ctx.translate(position.x, position.y - hop);
-  ctx.rotate(position.angle);
+  ctx.rotate(position.angle + 0.2);
 
   ctx.fillStyle = "rgba(7, 49, 61, .2)";
   ctx.beginPath();
-  ctx.ellipse(0, 23 + hop, 19, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(1, 24 + hop, 20, 6, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Full fluffy tail and triangular ears make the pet unmistakably feline.
-  ctx.strokeStyle = "#6d7f95";
+  // Warm golden coat and a tail trailing uphill identify Cheche at a glance.
+  ctx.strokeStyle = "#a47a43";
   ctx.lineWidth = 9;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(9, 9);
-  ctx.bezierCurveTo(29, 3, 27, -20, 13, -17);
+  ctx.moveTo(-11, -9);
+  ctx.bezierCurveTo(-27, -13, -27, -30, -11, -25);
   ctx.stroke();
-  ctx.strokeStyle = "#d2a55f";
+  ctx.strokeStyle = "#5c493a";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(17, -12);
-  ctx.lineTo(23, -7);
+  ctx.moveTo(-20, -22);
+  ctx.lineTo(-14, -18);
   ctx.stroke();
 
   const coat = ctx.createLinearGradient(-14, -18, 14, 20);
-  coat.addColorStop(0, "#596d84");
-  coat.addColorStop(0.48, "#8fa0af");
-  coat.addColorStop(0.7, "#c9a66b");
-  coat.addColorStop(1, "#e5bd75");
+  coat.addColorStop(0, "#8a6845");
+  coat.addColorStop(0.38, "#b88c50");
+  coat.addColorStop(0.72, "#d9ad67");
+  coat.addColorStop(1, "#f0cf91");
   ctx.fillStyle = coat;
-  ctx.strokeStyle = "#2e3e4d";
+  ctx.strokeStyle = "#4d3e33";
   ctx.lineWidth = 2.8;
   ctx.beginPath();
-  ctx.ellipse(0, 4, 16, 21, 0, 0, Math.PI * 2);
+  ctx.ellipse(-4, -1, 16, 22, -0.27, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#65798f";
-  ctx.strokeStyle = "#2e3e4d";
+  ctx.fillStyle = "#d5a45e";
+  ctx.strokeStyle = "#4d3e33";
   ctx.beginPath();
-  ctx.moveTo(-13, -7);
-  ctx.lineTo(-10, -23);
-  ctx.lineTo(-2, -11);
+  ctx.moveTo(0, 3);
+  ctx.lineTo(1, -12);
+  ctx.lineTo(8, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(13, -7);
-  ctx.lineTo(10, -23);
-  ctx.lineTo(2, -11);
+  ctx.moveTo(13, 4);
+  ctx.lineTo(17, -9);
+  ctx.lineTo(20, 7);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#e3bc78";
+  ctx.fillStyle = "#dfb56f";
   ctx.beginPath();
-  ctx.ellipse(0, -3, 14, 13, 0, 0, Math.PI * 2);
+  ctx.ellipse(8, 10, 14, 13, 0.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#f5dfb7";
+  ctx.fillStyle = "#f5dfb8";
   ctx.beginPath();
-  ctx.ellipse(0, 3, 8, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(12, 15, 8, 6, 0.2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "#8bca58";
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.ellipse(side * 5, -4, 2.5, 3.2, side * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#15212b";
-    ctx.beginPath();
-    ctx.ellipse(side * 5, -4, 0.8, 2.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#8bca58";
-  }
+  ctx.beginPath();
+  ctx.ellipse(11, 8, 2.7, 3.4, 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(4, 7, 1.8, 2.5, 0.14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#172019";
+  ctx.beginPath();
+  ctx.ellipse(11.3, 8, 0.8, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.fillStyle = "#9c5c61";
   ctx.beginPath();
-  ctx.moveTo(-2.5, 2);
-  ctx.lineTo(2.5, 2);
-  ctx.lineTo(0, 5);
+  ctx.moveTo(17, 14);
+  ctx.lineTo(21, 14);
+  ctx.lineTo(19, 17);
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = "#506378";
+  ctx.strokeStyle = "#70543d";
   ctx.lineWidth = 2;
-  for (const stripeX of [-6, 0, 6]) {
+  for (const [stripeX, stripeY] of [[0, 1], [5, 0], [10, 1]] as const) {
     ctx.beginPath();
-    ctx.moveTo(stripeX, -14);
-    ctx.lineTo(stripeX * 0.7, -8);
+    ctx.moveTo(stripeX, stripeY);
+    ctx.lineTo(stripeX + 1, stripeY + 5);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "rgba(49, 67, 84, .82)";
+  ctx.strokeStyle = "rgba(82, 62, 44, .82)";
   ctx.lineWidth = 1.5;
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(side * 4, 4);
-    ctx.lineTo(side * 16, 1);
-    ctx.moveTo(side * 4, 6);
-    ctx.lineTo(side * 16, 8);
-    ctx.stroke();
-  }
+  ctx.beginPath();
+  ctx.moveTo(14, 15);
+  ctx.lineTo(27, 11);
+  ctx.moveTo(14, 17);
+  ctx.lineTo(27, 19);
+  ctx.stroke();
 
-  ctx.fillStyle = "#d9af6d";
-  for (const side of [-1, 1]) {
+  ctx.fillStyle = "#e0b975";
+  for (const [pawX, pawY] of [[5, 21], [15, 22]] as const) {
     ctx.beginPath();
-    ctx.ellipse(side * 8, 19, 6, 4, side * 0.1, 0, Math.PI * 2);
+    ctx.ellipse(pawX, pawY, 6, 4, 0.15, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
@@ -740,22 +770,34 @@ function drawPawPrints(
   }
 }
 
-function drawCompanions(ctx: CanvasRenderingContext2D, model: GameModel) {
-  drawPawPrints(ctx, model, 11, 20, "rgba(118,145,151,ALPHA)");
-  drawPawPrints(ctx, model, 19, -23, "rgba(87,117,132,ALPHA)");
-  drawHamster(
-    ctx,
-    trailPosition(model, 11, 20),
-    model.distance * 0.72,
-  );
-  drawBlueGoldenCat(
-    ctx,
-    trailPosition(model, 19, -23),
-    model.distance * 0.58 + 1.7,
-  );
+function drawCompanions(
+  ctx: CanvasRenderingContext2D,
+  model: GameModel,
+  profile: ShopProfile,
+) {
+  if (profile.equippedPets.includes("pet-digger")) {
+    drawPawPrints(ctx, model, 11, 20, "rgba(143,113,76,ALPHA)");
+    drawHamster(
+      ctx,
+      trailPosition(model, 11, 20),
+      model.distance * 0.72,
+    );
+  }
+  if (profile.equippedPets.includes("pet-car")) {
+    drawPawPrints(ctx, model, 19, -23, "rgba(112,91,64,ALPHA)");
+    drawGoldenCat(
+      ctx,
+      trailPosition(model, 19, -23),
+      model.distance * 0.58 + 1.7,
+    );
+  }
 }
 
-function render(ctx: CanvasRenderingContext2D, model: GameModel) {
+function render(
+  ctx: CanvasRenderingContext2D,
+  model: GameModel,
+  profile: ShopProfile,
+) {
   const { width, height } = GAME;
   const shakeX = model.shake > 0 ? (seeded(model) - 0.5) * model.shake : 0;
   const shakeY = model.shake > 0 ? (seeded(model) - 0.5) * model.shake : 0;
@@ -819,7 +861,7 @@ function render(ctx: CanvasRenderingContext2D, model: GameModel) {
   }
 
   drawTracks(ctx, model);
-  drawCompanions(ctx, model);
+  drawCompanions(ctx, model, profile);
 
   const visible = model.obstacles
     .map((obstacle) => ({ obstacle, ...obstacleScreenPosition(model, obstacle) }))
@@ -844,7 +886,7 @@ function render(ctx: CanvasRenderingContext2D, model: GameModel) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  drawBoarder(ctx, model);
+  drawBoarder(ctx, model, profile);
 
   const d = difficulty(model.distance);
   if (model.speed > 56) {
@@ -958,6 +1000,7 @@ function update(
   input: InputState,
   dt: number,
   onLand: () => void,
+  board: ShopItem,
 ) {
   model.shake = Math.max(0, model.shake - dt * 34);
   model.invulnerable = Math.max(0, model.invulnerable - dt);
@@ -1000,13 +1043,14 @@ function update(
   } else if (input.accelerate) {
     model.stance = "tuck";
     model.stanceHold = 0.2;
-    model.speed += GAME.acceleration * dt;
+    model.speed += (board.acceleration ?? GAME.acceleration) * dt;
   } else {
     if (model.stanceHold <= 0) model.stance = "coast";
     const direction = Math.sign(GAME.cruiseSpeed - model.speed);
     model.speed += direction * GAME.cruiseReturn * dt;
   }
-  const dynamicMax = 108 + difficulty(model.distance) * (GAME.maxSpeed - 108);
+  const boardMax = board.maxSpeed ?? GAME.maxSpeed;
+  const dynamicMax = 108 + difficulty(model.distance) * (boardMax - 108);
   model.speed = Math.max(GAME.minSpeed, Math.min(dynamicMax, model.speed));
 
   const previousCenter = trackCenter(model.distance);
@@ -1019,7 +1063,7 @@ function update(
   const targetLateral =
     model.edge *
     GAME.lateralSpeed *
-    (0.72 + model.speed / GAME.maxSpeed) *
+    (0.72 + model.speed / boardMax) *
     (air ? GAME.airControl : 1);
   const delta = targetLateral - model.lateralVelocity;
   const change = GAME.edgeAcceleration * dt * (air ? 0.12 : 1);
@@ -1049,7 +1093,7 @@ function update(
   if (!air) {
     const contact = boardContact(model);
     const strength = input.brake ? 1.25 : input.accelerate ? 0.72 : 0.92;
-    let lastMark = model.trackMarks.at(-1);
+    const lastMark = model.trackMarks.at(-1);
 
     if (
       !lastMark ||
@@ -1057,19 +1101,19 @@ function update(
     ) {
       // Start a fresh segment after take-off instead of drawing across the air.
       model.trackMarks.push({ ...contact, strength });
-      lastMark = model.trackMarks.at(-1);
     } else {
-      let remaining = contact.distance - lastMark.distance;
+      let cursor: TrackMark = lastMark;
+      let remaining = contact.distance - cursor.distance;
       while (remaining >= GAME.trackSampleMeters) {
         const progress = GAME.trackSampleMeters / Math.max(remaining, 0.001);
-        const nextMark = {
-          distance: lastMark.distance + GAME.trackSampleMeters,
-          x: lastMark.x + (contact.x - lastMark.x) * progress,
+        const nextMark: TrackMark = {
+          distance: cursor.distance + GAME.trackSampleMeters,
+          x: cursor.x + (contact.x - cursor.x) * progress,
           strength,
         };
         model.trackMarks.push(nextMark);
-        lastMark = nextMark;
-        remaining = contact.distance - lastMark.distance;
+        cursor = nextMark;
+        remaining = contact.distance - cursor.distance;
       }
       model.trackAccumulator = Math.max(0, remaining);
     }
@@ -1109,17 +1153,25 @@ function update(
 
 function useAudio() {
   const audioRef = useRef<AudioContext | null>(null);
+  const musicGainRef = useRef<GainNode | null>(null);
+  const musicTimerRef = useRef<number | null>(null);
+
+  const ensureAudio = useCallback(() => {
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextClass) return null;
+    const audio = audioRef.current ?? new AudioContextClass();
+    audioRef.current = audio;
+    if (audio.state === "suspended") void audio.resume();
+    return audio;
+  }, []);
 
   const ping = useCallback((frequency: number, duration = 0.08, volume = 0.045) => {
     try {
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-      if (!AudioContextClass) return;
-      const audio = audioRef.current ?? new AudioContextClass();
-      audioRef.current = audio;
-      if (audio.state === "suspended") void audio.resume();
+      const audio = ensureAudio();
+      if (!audio) return;
       const oscillator = audio.createOscillator();
       const gain = audio.createGain();
       oscillator.type = "triangle";
@@ -1136,9 +1188,97 @@ function useAudio() {
     } catch {
       // Audio feedback is a progressive enhancement.
     }
+  }, [ensureAudio]);
+
+  const stopMusic = useCallback(() => {
+    if (musicTimerRef.current !== null) {
+      window.clearInterval(musicTimerRef.current);
+      musicTimerRef.current = null;
+    }
+    const audio = audioRef.current;
+    const gain = musicGainRef.current;
+    if (audio && gain) {
+      gain.gain.cancelScheduledValues(audio.currentTime);
+      gain.gain.setTargetAtTime(0.0001, audio.currentTime, 0.035);
+    }
+    musicGainRef.current = null;
   }, []);
 
-  return ping;
+  const startMusic = useCallback(() => {
+    try {
+      if (musicTimerRef.current !== null) return;
+      const audio = ensureAudio();
+      if (!audio) return;
+
+      const master = audio.createGain();
+      master.gain.setValueAtTime(0.0001, audio.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.055, audio.currentTime + 0.3);
+      master.connect(audio.destination);
+      musicGainRef.current = master;
+
+      const beat = 60 / 118 / 2;
+      const melody = [0, 7, 12, 7, 3, 10, 12, 15, 12, 7, 5, 10, 3, 7, 10, 5];
+      let step = 0;
+      let nextTime = audio.currentTime + 0.05;
+
+      const scheduleNote = (
+        frequency: number,
+        at: number,
+        duration: number,
+        type: OscillatorType,
+        volume: number,
+      ) => {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, at);
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(volume, at + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+        oscillator.connect(gain).connect(master);
+        oscillator.start(at);
+        oscillator.stop(at + duration + 0.02);
+      };
+
+      const schedule = () => {
+        while (nextTime < audio.currentTime + 0.28) {
+          const semitone = melody[step % melody.length];
+          const lead = 220 * 2 ** (semitone / 12);
+          scheduleNote(lead, nextTime, beat * 0.72, "triangle", 0.12);
+          if (step % 2 === 0) {
+            const bassSemitone = [0, 3, 5, 7][Math.floor(step / 4) % 4];
+            scheduleNote(
+              82.41 * 2 ** (bassSemitone / 12),
+              nextTime,
+              beat * 1.45,
+              "sine",
+              0.15,
+            );
+          }
+          if (step % 4 === 0 || step % 4 === 3) {
+            scheduleNote(58, nextTime, 0.09, "square", 0.045);
+          }
+          step += 1;
+          nextTime += beat;
+        }
+      };
+
+      schedule();
+      musicTimerRef.current = window.setInterval(schedule, 100);
+    } catch {
+      // Background music is optional when Web Audio is unavailable.
+    }
+  }, [ensureAudio]);
+
+  useEffect(
+    () => () => {
+      stopMusic();
+      void audioRef.current?.close();
+    },
+    [stopMusic],
+  );
+
+  return { ping, startMusic, stopMusic };
 }
 
 export function SnowGame() {
@@ -1149,34 +1289,55 @@ export function SnowGame() {
   const rafRef = useRef(0);
   const lastTimeRef = useRef(0);
   const hudTimeRef = useRef(0);
-  const ping = useAudio();
+  const { ping, startMusic, stopMusic } = useAudio();
   const [hud, setHud] = useState<HudState>(() => hudFrom(initialModel));
+  const [profile, setProfile] = useState<ShopProfile>(DEFAULT_PROFILE);
+  const profileRef = useRef<ShopProfile>(DEFAULT_PROFILE);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [lastReward, setLastReward] = useState(0);
 
   const syncHud = useCallback(() => {
     setHud(hudFrom(modelRef.current));
   }, []);
 
+  const updateProfile = useCallback(
+    (updater: (current: ShopProfile) => ShopProfile) => {
+      setProfile((current) => {
+        const next = updater(current);
+        profileRef.current = next;
+        saveProfile(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const start = useCallback(() => {
     const model = modelRef.current;
     if (model.status === "START" || model.status === "GAME_OVER") {
       resetRun(model);
+      setLastReward(0);
+      setShopOpen(false);
       ping(620, 0.12);
+      if (profileRef.current.musicEnabled) startMusic();
       syncHud();
     }
-  }, [ping, syncHud]);
+  }, [ping, startMusic, syncHud]);
 
   const togglePause = useCallback(() => {
     const model = modelRef.current;
     if (model.status === "PLAYING") {
       model.status = "PAUSED";
       ping(240, 0.08);
+      stopMusic();
     } else if (model.status === "PAUSED") {
       model.status = "PLAYING";
       lastTimeRef.current = performance.now();
       ping(420, 0.08);
+      if (profileRef.current.musicEnabled) startMusic();
     }
     syncHud();
-  }, [ping, syncHud]);
+  }, [ping, startMusic, stopMusic, syncHud]);
 
   const toggleEdge = useCallback(() => {
     const model = modelRef.current;
@@ -1204,14 +1365,82 @@ export function SnowGame() {
     }
   }, [ping]);
 
+  const handleShopItem = useCallback(
+    (item: ShopItem) => {
+      updateProfile((current) => {
+        const owned = current.ownedItemIds.includes(item.id);
+        if (!owned && current.coins < item.price) return current;
+
+        const ownedItemIds = owned
+          ? current.ownedItemIds
+          : [...current.ownedItemIds, item.id];
+        const coins = owned ? current.coins : current.coins - item.price;
+
+        if (item.category === "pet") {
+          const active = current.equippedPets.includes(item.id);
+          return {
+            ...current,
+            coins,
+            ownedItemIds,
+            equippedPets: active
+              ? current.equippedPets.filter((id) => id !== item.id)
+              : [...current.equippedPets, item.id],
+          };
+        }
+
+        return {
+          ...current,
+          coins,
+          ownedItemIds,
+          equipped: {
+            ...current.equipped,
+            [item.category as GearSlot]: item.id,
+          },
+        };
+      });
+      ping(item.category === "pet" ? 460 : 700, 0.1, 0.04);
+    },
+    [ping, updateProfile],
+  );
+
+  const toggleTestMode = useCallback(() => {
+    updateProfile((current) =>
+      current.testMode
+        ? { ...current, testMode: false }
+        : unlockTestProfile(current),
+    );
+    ping(880, 0.18, 0.05);
+  }, [ping, updateProfile]);
+
+  const toggleMusic = useCallback(() => {
+    const nextEnabled = !profileRef.current.musicEnabled;
+    updateProfile((current) => ({ ...current, musicEnabled: nextEnabled }));
+    if (nextEnabled) startMusic();
+    else stopMusic();
+    ping(nextEnabled ? 660 : 220, 0.08, 0.035);
+  }, [ping, startMusic, stopMusic, updateProfile]);
+
   useEffect(() => {
-    modelRef.current.best = safeBest();
-    syncHud();
+    const timer = window.setTimeout(() => {
+      modelRef.current.best = safeBest();
+      const storedProfile = loadProfile();
+      profileRef.current = storedProfile;
+      setProfile(storedProfile);
+      syncHud();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [syncHud]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
+      if (shopOpen) {
+        if (key === "escape") {
+          event.preventDefault();
+          setShopOpen(false);
+        }
+        return;
+      }
       if (
         [" ", "arrowup", "arrowdown", "shift", "k", "l", "j", "p", "escape", "enter"].includes(
           key,
@@ -1244,6 +1473,7 @@ export function SnowGame() {
     };
     const onBlur = () => {
       inputRef.current = { accelerate: false, brake: false };
+      stopMusic();
       if (modelRef.current.status === "PLAYING") {
         modelRef.current.status = "PAUSED";
         syncHud();
@@ -1259,7 +1489,7 @@ export function SnowGame() {
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onBlur);
     };
-  }, [jump, start, syncHud, toggleEdge, togglePause]);
+  }, [jump, shopOpen, start, stopMusic, syncHud, toggleEdge, togglePause]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1270,21 +1500,39 @@ export function SnowGame() {
       const rawDt = lastTimeRef.current ? (time - lastTimeRef.current) / 1000 : 0;
       const dt = Math.min(0.034, Math.max(0, rawDt));
       lastTimeRef.current = time;
-      update(modelRef.current, inputRef.current, dt, () => ping(170, 0.07, 0.03));
-      render(ctx, modelRef.current);
+      const model = modelRef.current;
+      const previousStatus = model.status;
+      const currentProfile = profileRef.current;
+      update(
+        model,
+        inputRef.current,
+        dt,
+        () => ping(170, 0.07, 0.03),
+        getBoard(currentProfile),
+      );
+      if (previousStatus !== "GAME_OVER" && model.status === "GAME_OVER") {
+        const reward = rewardForDistance(model.distance);
+        setLastReward(reward);
+        updateProfile((current) => ({ ...current, coins: current.coins + reward }));
+        stopMusic();
+      }
+      render(ctx, model, profileRef.current);
       if (time - hudTimeRef.current > 90) {
         hudTimeRef.current = time;
-        setHud(hudFrom(modelRef.current));
+        setHud(hudFrom(model));
       }
       rafRef.current = requestAnimationFrame(frame);
     };
 
     rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [ping]);
+  }, [ping, stopMusic, updateProfile]);
 
+  const activeBoard = getBoard(profile);
   const speedPercent =
-    ((hud.speed - GAME.minSpeed) / (GAME.maxSpeed - GAME.minSpeed)) * 100;
+    ((hud.speed - GAME.minSpeed) /
+      ((activeBoard.maxSpeed ?? GAME.maxSpeed) - GAME.minSpeed)) *
+    100;
   const countdownText =
     hud.countdown > 3
       ? "3"
@@ -1368,9 +1616,31 @@ export function SnowGame() {
               <p className="record">
                 本地最佳 <strong>{hud.best.toLocaleString()} m</strong>
               </p>
+              <div className="coin-balance" aria-label={`薯薯币 ${profile.coins}`}>
+                <span aria-hidden="true">🥔</span>
+                <strong>{profile.coins.toLocaleString()}</strong>
+                <span>薯薯币</span>
+              </div>
               <button className="primary-button" type="button" onClick={start}>
                 开始滑行 · ENTER
               </button>
+              <div className="start-actions">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setShopOpen(true)}
+                >
+                  薯薯商城
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={toggleMusic}
+                  aria-pressed={profile.musicEnabled}
+                >
+                  音乐 {profile.musicEnabled ? "开" : "关"}
+                </button>
+              </div>
               <div className="control-strip" aria-label="操作说明">
                 <span><kbd>SPACE</kbd>换刃</span>
                 <span><kbd>K / L</kbd>调速</span>
@@ -1409,8 +1679,20 @@ export function SnowGame() {
               <p className="record">
                 历史最佳 <strong>{hud.best.toLocaleString()} m</strong>
               </p>
+              <div className="run-reward">
+                <span>本局获得</span>
+                <strong>🥔 +{lastReward}</strong>
+                <small>余额 {profile.coins.toLocaleString()}</small>
+              </div>
               <button className="primary-button" type="button" onClick={start}>
                 再滑一次 · ENTER
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setShopOpen(true)}
+              >
+                去薯薯商城
               </button>
               <button
                 className="secondary-button"
@@ -1424,6 +1706,15 @@ export function SnowGame() {
               </button>
             </div>
           </div>
+        )}
+
+        {shopOpen && (
+          <ShopModal
+            profile={profile}
+            onClose={() => setShopOpen(false)}
+            onItemAction={handleShopItem}
+            onToggleTest={toggleTestMode}
+          />
         )}
       </section>
 
