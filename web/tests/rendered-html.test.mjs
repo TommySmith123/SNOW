@@ -172,6 +172,7 @@ test("keeps PWA and native mobile delivery separate", async () => {
     mobileEntry,
     nativeBridge,
     mobileCss,
+    globalCss,
     game,
     androidManifest,
     iosInfo,
@@ -183,6 +184,7 @@ test("keeps PWA and native mobile delivery separate", async () => {
     readFile(new URL("../../mobile/src/main.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../mobile/src/nativeBridge.ts", import.meta.url), "utf8"),
     readFile(new URL("../../mobile/src/mobile.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/game/SnowGame.tsx", import.meta.url), "utf8"),
     readFile(
       new URL("../../mobile/android/app/src/main/AndroidManifest.xml", import.meta.url),
@@ -219,6 +221,14 @@ test("keeps PWA and native mobile delivery separate", async () => {
   assert.match(mobileCss, /\.touch-speed-controls \.touch-action\s*\{[\s\S]*?opacity:\s*0/);
   assert.match(mobileCss, /\.touch-edge::before\s*\{[\s\S]*?content:\s*"↔"/);
   assert.match(mobileCss, /\.touch-jump::before\s*\{[\s\S]*?content:\s*"↑"/);
+  assert.match(globalCss, /@media \(max-width:\s*980px\)/);
+  assert.match(globalCss, /5\.4rem minmax\(1\.2rem, 1fr\) 5\.4rem/);
+  assert.match(globalCss, /\.touch-brake\s*\{[\s\S]*?order:\s*1/);
+  assert.match(globalCss, /\.touch-accelerate\s*\{[\s\S]*?order:\s*2/);
+  assert.match(globalCss, /\.touch-speed-controls \.touch-action\s*\{[\s\S]*?opacity:\s*0/);
+  assert.match(globalCss, /max-height:\s*calc\(100dvh - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\)\)/);
+  assert.match(globalCss, /@media \(max-width:\s*560px\)[\s\S]*?height:\s*calc\(100dvh/);
+  assert.match(globalCss, /\.game-canvas\s*\{[\s\S]*?object-fit:\s*cover/);
   assert.match(game, /aria-label="加速"/);
   assert.match(game, /aria-label="减速"/);
   assert.match(androidManifest, /android:screenOrientation="portrait"/);
