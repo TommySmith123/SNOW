@@ -1651,13 +1651,13 @@ function useAudio() {
 
       const master = audio.createGain();
       const compressor = audio.createDynamicsCompressor();
-      compressor.threshold.setValueAtTime(-20, audio.currentTime);
-      compressor.knee.setValueAtTime(22, audio.currentTime);
-      compressor.ratio.setValueAtTime(4, audio.currentTime);
-      compressor.attack.setValueAtTime(0.018, audio.currentTime);
-      compressor.release.setValueAtTime(0.36, audio.currentTime);
+      compressor.threshold.setValueAtTime(-16, audio.currentTime);
+      compressor.knee.setValueAtTime(16, audio.currentTime);
+      compressor.ratio.setValueAtTime(6, audio.currentTime);
+      compressor.attack.setValueAtTime(0.008, audio.currentTime);
+      compressor.release.setValueAtTime(0.28, audio.currentTime);
       master.gain.setValueAtTime(0.0001, audio.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.65);
+      master.gain.exponentialRampToValueAtTime(0.42, audio.currentTime + 0.65);
       master.connect(compressor).connect(audio.destination);
       musicGainRef.current = master;
 
@@ -2199,6 +2199,7 @@ export function SnowGame() {
               <button
                 className="touch-action touch-accelerate"
                 type="button"
+                aria-label="加速"
                 disabled={hud.status !== "PLAYING"}
                 onPointerDown={(event) => {
                   event.preventDefault();
@@ -2215,6 +2216,7 @@ export function SnowGame() {
               <button
                 className="touch-action touch-brake"
                 type="button"
+                aria-label="减速"
                 disabled={hud.status !== "PLAYING"}
                 onPointerDown={(event) => {
                   event.preventDefault();
