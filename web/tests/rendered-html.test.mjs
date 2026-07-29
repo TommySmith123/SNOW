@@ -127,6 +127,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /equippedPets\.includes\("pet-car"\) \? 1 : 0/);
   assert.match(game, /function drawPetSnowTrail/);
   assert.doesNotMatch(game, /function drawPawPrints/);
+  assert.match(game, /x:\s*originX - sideOffset/);
+  assert.match(game, /historyReady:\s*false/);
+  assert.match(game, /if \(!position\.historyReady\) break/);
+  assert.match(game, /if \(positions\.length < 2\) continue/);
   assert.match(game, /Long-haired golden Syrian hamster/);
   assert.match(game, /illustrated[\s\S]*shop portrait/);
   assert.match(game, /getBoard\(currentProfile\)/);

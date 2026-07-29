@@ -860,10 +860,15 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
   const nextIndex = marks.findIndex((mark) => mark.distance >= targetDistance);
 
   if (nextIndex <= 0 || marks.length < 2) {
+    const originX = marks[0]?.x ?? boardContact(model).x;
     return {
-      x: model.playerX + sideOffset,
+      // A straight downhill path has a left-facing screen-space normal.
+      // Keep the pre-history slot on that same side so the pet cannot jump
+      // across the rider when the first real history segment becomes usable.
+      x: originX - sideOffset,
       y: GAME.playerY - lagMeters * GAME.metersToPixels,
       angle: 0,
+      historyReady: false,
     };
   }
 
@@ -896,6 +901,7 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
       -0.48,
       Math.min(0.48, Math.atan2(dy, dx) - Math.PI / 2),
     ),
+    historyReady: true,
   };
 }
 
@@ -1272,15 +1278,24 @@ function drawPetSnowTrail(
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   for (const lane of [-2.1, 2.1]) {
-    ctx.beginPath();
+    const positions: ReturnType<typeof trailPosition>[] = [];
     for (let step = 1; step <= 9; step++) {
       const position = trailPosition(
         model,
         lagMeters + step * 1.35,
         sideOffset + lane,
       );
-      if (step === 1) ctx.moveTo(position.x, position.y);
-      else ctx.lineTo(position.x, position.y);
+      // Do not turn the synthetic pre-start path into a long visible line.
+      // Once one older sample is unavailable, every following step is older
+      // still, so the real trail ends here.
+      if (!position.historyReady) break;
+      positions.push(position);
+    }
+    if (positions.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(positions[0].x, positions[0].y);
+    for (let index = 1; index < positions.length; index++) {
+      ctx.lineTo(positions[index].x, positions[index].y);
     }
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.35;
