@@ -20,3 +20,48 @@ body.native-mobile .shop-panel {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+
+body.native-mobile .touch-controls {
+  grid-template:
+    "edge . speed" auto
+    "edge . jump" auto
+    / 5.4rem minmax(1.2rem, 1fr) 10rem;
+  column-gap: 0.5rem;
+  row-gap: 0.55rem;
+}
+
+body.native-mobile .touch-edge {
+  grid-area: edge;
+  align-self: end;
+  justify-self: start;
+}
+
+body.native-mobile .touch-speed-controls {
+  grid-area: speed;
+  gap: 0.5rem;
+}
+
+body.native-mobile .touch-jump {
+  grid-area: jump;
+  justify-self: end;
+}
+
+body.native-mobile .touch-edge,
+body.native-mobile .touch-jump {
+  width: 5.4rem;
+  height: 5.4rem;
+}
+
+body.native-mobile .touch-speed-controls .touch-action {
+  min-height: 3.9rem;
+  font-size: 0.86rem;
+}
+
+body.native-mobile .touch-action strong {
+  font-size: 1rem;
+}
+
+body.native-mobile .touch-action small {
+  margin-top: 0.2rem;
+  font-size: 0.58rem;
+}
