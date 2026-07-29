@@ -1088,7 +1088,8 @@ function drawGoldenCat(
   ctx.ellipse(1, 23 + hop, 22, 6.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Thick upright tail and rounded silhouette mirror Cheche on the poster.
+  // A thick feathered tail and plush silhouette match Cheche's illustrated
+  // shop portrait while remaining readable on the scaled native canvas.
   ctx.strokeStyle = "#6f4827";
   ctx.lineWidth = 13;
   ctx.lineCap = "round";
@@ -1096,7 +1097,7 @@ function drawGoldenCat(
   ctx.moveTo(-12, 3);
   ctx.bezierCurveTo(-29, -3, -28, -25, -13, -29);
   ctx.stroke();
-  ctx.strokeStyle = "#d6a356";
+  ctx.strokeStyle = "#e2ad5e";
   ctx.lineWidth = 8.5;
   ctx.beginPath();
   ctx.moveTo(-12, 2);
@@ -1111,22 +1112,49 @@ function drawGoldenCat(
     ctx.stroke();
   }
 
-  const coat = ctx.createLinearGradient(-14, -18, 14, 20);
-  coat.addColorStop(0, "#b77836");
-  coat.addColorStop(0.38, "#d89f50");
-  coat.addColorStop(0.72, "#efc879");
-  coat.addColorStop(1, "#f7dda1");
+  const coat = ctx.createLinearGradient(-18, -18, 18, 22);
+  coat.addColorStop(0, "#c8873b");
+  coat.addColorStop(0.38, "#e2aa59");
+  coat.addColorStop(0.72, "#f2cb7d");
+  coat.addColorStop(1, "#fae4ae");
   ctx.fillStyle = coat;
   ctx.strokeStyle = "#704729";
-  ctx.lineWidth = 2.8;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.ellipse(-3, 2, 20, 17.5, -0.2, 0, Math.PI * 2);
+  ctx.moveTo(-24, 5);
+  ctx.quadraticCurveTo(-24, -5, -17, -10);
+  ctx.lineTo(-18, -15);
+  ctx.lineTo(-11, -12);
+  ctx.lineTo(-7, -17);
+  ctx.lineTo(-2, -12);
+  ctx.quadraticCurveTo(8, -11, 13, -3);
+  ctx.lineTo(17, 0);
+  ctx.lineTo(14, 5);
+  ctx.lineTo(18, 10);
+  ctx.lineTo(12, 12);
+  ctx.lineTo(10, 18);
+  ctx.lineTo(3, 16);
+  ctx.lineTo(-3, 20);
+  ctx.lineTo(-7, 16);
+  ctx.lineTo(-14, 18);
+  ctx.lineTo(-15, 12);
+  ctx.lineTo(-21, 11);
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = "#fff0c9";
   ctx.beginPath();
-  ctx.ellipse(-1, 10, 12, 8, -0.15, 0, Math.PI * 2);
+  ctx.moveTo(-12, 8);
+  ctx.quadraticCurveTo(-6, 3, 1, 6);
+  ctx.lineTo(6, 5);
+  ctx.lineTo(5, 10);
+  ctx.lineTo(9, 13);
+  ctx.lineTo(3, 14);
+  ctx.lineTo(-1, 18);
+  ctx.lineTo(-5, 14);
+  ctx.lineTo(-11, 15);
+  ctx.closePath();
   ctx.fill();
 
   ctx.strokeStyle = "#9a652f";
@@ -1156,9 +1184,24 @@ function drawGoldenCat(
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#e7b761";
+  ctx.fillStyle = "#edbe6c";
   ctx.beginPath();
-  ctx.ellipse(10, 8, 15.5, 14.5, 0.15, 0, Math.PI * 2);
+  ctx.moveTo(-2, 8);
+  ctx.lineTo(0, 2);
+  ctx.quadraticCurveTo(2, -3, 8, -5);
+  ctx.lineTo(12, -8);
+  ctx.lineTo(15, -4);
+  ctx.quadraticCurveTo(22, -1, 24, 6);
+  ctx.lineTo(28, 9);
+  ctx.lineTo(24, 13);
+  ctx.lineTo(25, 18);
+  ctx.lineTo(19, 19);
+  ctx.lineTo(15, 23);
+  ctx.lineTo(11, 20);
+  ctx.lineTo(5, 22);
+  ctx.lineTo(4, 17);
+  ctx.lineTo(-1, 14);
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
@@ -1166,6 +1209,16 @@ function drawGoldenCat(
   ctx.beginPath();
   ctx.ellipse(12, 14, 10, 7, 0.15, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.strokeStyle = "#9b6531";
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = "round";
+  for (const [x, y, dx] of [[5, 0, 4], [10, -2, 3], [15, 0, 3]] as const) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + dx * 0.45, y + 3, x + dx, y + 5);
+    ctx.stroke();
+  }
 
   drawPetEye(ctx, 4.5, 6.4, 3.1, 4.1, "#9bcf49");
   drawPetEye(ctx, 15, 6.8, 3.6, 4.5, "#9bcf49");

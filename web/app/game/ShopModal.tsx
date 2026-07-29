@@ -20,38 +20,15 @@ const CATEGORIES: Array<{ id: ShopCategory; label: string }> = [
 ];
 
 function PetPortrait({ id }: { id: string }) {
-  const hamster = id === "pet-digger";
-  if (hamster) {
-    return (
-      // The shared component also runs inside Capacitor, where next/image is
-      // unavailable; this local static asset is intentionally a plain image.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        className="pet-portrait-image"
-        src="/pets/digger-golden-hamster.png"
-        alt=""
-        aria-hidden="true"
-      />
-    );
-  }
+  const source =
+    id === "pet-digger"
+      ? "/pets/digger-golden-hamster.png"
+      : "/pets/car-golden-shaded-cat.png";
   return (
-    <span className="pet-portrait is-golden-cat">
-      <span className="pet-tail" />
-      <span className="pet-body">
-        <span className="pet-stripe pet-stripe-one" />
-        <span className="pet-stripe pet-stripe-two" />
-      </span>
-      <span className="pet-head">
-        <span className="pet-ear pet-ear-left" />
-        <span className="pet-ear pet-ear-right" />
-        <span className="pet-face-patch" />
-        <span className="pet-eye pet-eye-left" />
-        <span className="pet-eye pet-eye-right" />
-        <span className="pet-nose" />
-      </span>
-      <span className="pet-paw pet-paw-left" />
-      <span className="pet-paw pet-paw-right" />
-    </span>
+    // The shared component also runs inside Capacitor, where next/image is
+    // unavailable; these local static assets intentionally use a plain image.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="pet-portrait-image" src={source} alt="" aria-hidden="true" />
   );
 }
 

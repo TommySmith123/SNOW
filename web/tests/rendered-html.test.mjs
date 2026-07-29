@@ -128,6 +128,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /function drawPetSnowTrail/);
   assert.doesNotMatch(game, /function drawPawPrints/);
   assert.match(game, /Long-haired golden Syrian hamster/);
+  assert.match(game, /illustrated[\s\S]*shop portrait/);
   assert.match(game, /getBoard\(currentProfile\)/);
   assert.doesNotMatch(game, /offTrack > 68/);
   assert.match(shop, /shushu-profile-v2/);
@@ -146,6 +147,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(shop, /毛茸茸金丝熊/);
   assert.match(shopModal, /digger-golden-hamster\.png/);
   assert.match(shop, /name: "车车"/);
+  assert.match(shop, /毛茸茸金渐层幼猫/);
+  assert.match(shopModal, /car-golden-shaded-cat\.png/);
   assert.match(shop, /coins: Math\.max\(99_999, profile\.coins\)/);
   assert.match(shopModal, /启用商城测试模式/);
   assert.match(shopModal, /服装只改变外观/);
@@ -190,8 +193,9 @@ test("keeps PWA and native mobile delivery separate", async () => {
   assert.equal(pwa.orientation, "portrait");
   assert.ok(pwa.icons.some((icon) => icon.sizes === "192x192"));
   assert.ok(pwa.icons.some((icon) => icon.sizes === "512x512"));
-  assert.match(serviceWorker, /shushu-snowline-v2/);
+  assert.match(serviceWorker, /shushu-snowline-v3/);
   assert.match(serviceWorker, /digger-golden-hamster\.png/);
+  assert.match(serviceWorker, /car-golden-shaded-cat\.png/);
   assert.match(serviceWorker, /caches\.open/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);

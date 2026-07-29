@@ -407,9 +407,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: "车车",
     category: "pet",
     price: 520,
-    description: "金渐层猫 · 跟随时开局获得一次护盾",
-    color: "#d9ad67",
-    accent: "#70543d",
+    description: "毛茸茸金渐层幼猫 · 跟随时开局获得一次护盾",
+    color: "#e2ad5e",
+    accent: "#fff0ce",
   },
 ];
 

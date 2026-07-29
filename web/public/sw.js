@@ -1,4 +1,4 @@
-const CACHE_VERSION = "shushu-snowline-v2";
+const CACHE_VERSION = "shushu-snowline-v3";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -6,7 +6,8 @@ const CORE_ASSETS = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-512-maskable.png",
-  "/pets/digger-golden-hamster.png"
+  "/pets/digger-golden-hamster.png",
+  "/pets/car-golden-shaded-cat.png"
 ];
 
 self.addEventListener("install", (event) => {
