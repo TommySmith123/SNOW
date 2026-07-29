@@ -95,6 +95,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.queuedEdge = inward/);
   assert.match(game, /model\.trackMarks\.push/);
   assert.match(game, /boardContact\(model\)/);
+  assert.match(game, /The snowboard stays pinned to the snow/);
+  assert.match(game, /ctx\.translate\(model\.playerX, y\)/);
+  assert.doesNotMatch(game, /GAME\.playerY \+ crouch \+ Math\.cos/);
   assert.match(game, /drawHamster/);
   assert.match(game, /drawGoldenCat/);
   assert.match(game, /drawPawPrints/);
@@ -113,7 +116,11 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.stance = "brake"/);
   assert.match(game, /startMusic/);
   assert.match(game, /createDynamicsCompressor/);
-  assert.match(game, /exponentialRampToValueAtTime\(0\.24/);
+  assert.match(game, /const beat = 60 \/ 92 \/ 2/);
+  assert.match(game, /chordProgression/);
+  assert.match(game, /scheduleKick/);
+  assert.match(game, /exponentialRampToValueAtTime\(0\.18/);
+  assert.doesNotMatch(game, /"square"/);
   assert.match(game, /rewardForRun/);
   assert.match(game, /equippedPets\.includes\("pet-digger"\)/);
   assert.match(game, /equippedPets\.includes\("pet-car"\) \? 1 : 0/);
@@ -151,6 +158,7 @@ test("keeps PWA and native mobile delivery separate", async () => {
     mobileConfig,
     mobileEntry,
     nativeBridge,
+    mobileCss,
     androidManifest,
     iosInfo,
   ] = await Promise.all([
@@ -160,6 +168,7 @@ test("keeps PWA and native mobile delivery separate", async () => {
     readFile(new URL("../../mobile/capacitor.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../../mobile/src/main.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../mobile/src/nativeBridge.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../mobile/src/mobile.css", import.meta.url), "utf8"),
     readFile(
       new URL("../../mobile/android/app/src/main/AndroidManifest.xml", import.meta.url),
       "utf8",
@@ -186,6 +195,10 @@ test("keeps PWA and native mobile delivery separate", async () => {
   assert.match(nativeBridge, /Capacitor\.isNativePlatform/);
   assert.match(nativeBridge, /Haptics/);
   assert.match(nativeBridge, /appStateChange/);
+  assert.match(mobileCss, /grid-template-columns:\s*1fr/);
+  assert.match(mobileCss, /\.touch-brake\s*\{[\s\S]*?order:\s*1/);
+  assert.match(mobileCss, /\.touch-accelerate\s*\{[\s\S]*?order:\s*2/);
+  assert.match(mobileCss, /5\.4rem minmax\(1\.2rem, 1fr\) 5\.4rem/);
   assert.match(androidManifest, /android:screenOrientation="portrait"/);
   assert.match(iosInfo, /UIInterfaceOrientationPortrait/);
   assert.doesNotMatch(iosInfo, /UIInterfaceOrientationLandscape/);

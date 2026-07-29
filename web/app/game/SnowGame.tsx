@@ -104,13 +104,11 @@ function boardContact(model: GameModel) {
   const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const tuck = model.stance === "tuck";
   const brake = model.stance === "brake";
-  const crouch = tuck ? 12 : brake ? 5 : 0;
   const edgeRotation =
     (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) +
     (brake ? model.edge * 0.42 : 0);
   const boardOffset = 28;
-  const boardY =
-    GAME.playerY + crouch + Math.cos(edgeRotation) * boardOffset;
+  const boardY = GAME.playerY + Math.cos(edgeRotation) * boardOffset;
 
   return {
     x: model.playerX - Math.sin(edgeRotation) * boardOffset,
@@ -643,7 +641,7 @@ function drawBoarder(
   ctx.restore();
 
   ctx.save();
-  ctx.translate(model.playerX, y + crouch);
+  ctx.translate(model.playerX, y);
   ctx.rotate(edgeRotation);
   if (model.status === "CRASHED") {
     ctx.rotate(model.crashTime * 3.8);
@@ -666,6 +664,12 @@ function drawBoarder(
       ctx.fill();
     }
   }
+
+  // The snowboard stays pinned to the snow while only the rider's body
+  // changes height for tuck/brake poses. This keeps the board contact point
+  // and its sampled tracks continuous across stance changes.
+  ctx.save();
+  ctx.translate(0, crouch);
 
   // Deep red hair silhouette from the supplied protagonist reference.
   ctx.fillStyle = "#a9121d";
@@ -787,6 +791,7 @@ function drawBoarder(
     ctx.arc(dotX, dotY + (tuck ? 10 : 0), 1.2, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
   ctx.restore();
 
   // A conventional snowboard with a pattern shared by its shop preview.
@@ -1646,58 +1651,120 @@ function useAudio() {
 
       const master = audio.createGain();
       const compressor = audio.createDynamicsCompressor();
-      compressor.threshold.setValueAtTime(-18, audio.currentTime);
-      compressor.knee.setValueAtTime(18, audio.currentTime);
-      compressor.ratio.setValueAtTime(7, audio.currentTime);
-      compressor.attack.setValueAtTime(0.004, audio.currentTime);
-      compressor.release.setValueAtTime(0.24, audio.currentTime);
+      compressor.threshold.setValueAtTime(-20, audio.currentTime);
+      compressor.knee.setValueAtTime(22, audio.currentTime);
+      compressor.ratio.setValueAtTime(4, audio.currentTime);
+      compressor.attack.setValueAtTime(0.018, audio.currentTime);
+      compressor.release.setValueAtTime(0.36, audio.currentTime);
       master.gain.setValueAtTime(0.0001, audio.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.24, audio.currentTime + 0.3);
+      master.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.65);
       master.connect(compressor).connect(audio.destination);
       musicGainRef.current = master;
 
-      const beat = 60 / 118 / 2;
-      const melody = [0, 7, 12, 7, 3, 10, 12, 15, 12, 7, 5, 10, 3, 7, 10, 5];
+      // A restrained winter downtempo loop: slow pads and bass establish the
+      // slope, while the sparse filtered melody leaves room for game sounds.
+      const beat = 60 / 92 / 2;
+      const chordProgression = [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [3, 7, 10],
+        [-2, 2, 5],
+      ];
+      const melody: Array<number | null> = [
+        12, null, null, 10, null, null, 7, null,
+        5, null, null, 7, null, null, 10, null,
+        7, null, null, 5, null, null, 3, null,
+        null, null, null, null, null, null, null, null,
+      ];
       let step = 0;
       let nextTime = audio.currentTime + 0.05;
 
-      const scheduleNote = (
+      const scheduleTone = (
         frequency: number,
         at: number,
         duration: number,
         type: OscillatorType,
         volume: number,
+        attack = 0.035,
+        cutoff = 1800,
       ) => {
         const oscillator = audio.createOscillator();
         const gain = audio.createGain();
+        const filter = audio.createBiquadFilter();
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, at);
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(cutoff, at);
+        filter.Q.setValueAtTime(0.55, at);
         gain.gain.setValueAtTime(0.0001, at);
-        gain.gain.exponentialRampToValueAtTime(volume, at + 0.015);
+        gain.gain.exponentialRampToValueAtTime(
+          volume,
+          at + Math.min(attack, duration * 0.42),
+        );
         gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
+        oscillator.connect(filter).connect(gain).connect(master);
+        oscillator.start(at);
+        oscillator.stop(at + duration + 0.05);
+      };
+
+      const scheduleKick = (at: number) => {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(104, at);
+        oscillator.frequency.exponentialRampToValueAtTime(46, at + 0.2);
+        gain.gain.setValueAtTime(0.1, at);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
         oscillator.connect(gain).connect(master);
         oscillator.start(at);
-        oscillator.stop(at + duration + 0.02);
+        oscillator.stop(at + 0.24);
       };
 
       const schedule = () => {
-        while (nextTime < audio.currentTime + 0.28) {
-          const semitone = melody[step % melody.length];
-          const lead = 220 * 2 ** (semitone / 12);
-          scheduleNote(lead, nextTime, beat * 0.72, "triangle", 0.12);
-          if (step % 2 === 0) {
-            const bassSemitone = [0, 3, 5, 7][Math.floor(step / 4) % 4];
-            scheduleNote(
-              82.41 * 2 ** (bassSemitone / 12),
+        while (nextTime < audio.currentTime + 0.32) {
+          const chordIndex = Math.floor(step / 8) % chordProgression.length;
+          const chord = chordProgression[chordIndex];
+
+          if (step % 8 === 0) {
+            for (const semitone of chord) {
+              scheduleTone(
+                146.83 * 2 ** (semitone / 12),
+                nextTime,
+                beat * 7.8,
+                "triangle",
+                0.028,
+                0.32,
+                920,
+              );
+            }
+          }
+
+          if (step % 4 === 0) {
+            scheduleTone(
+              73.42 * 2 ** (chord[0] / 12),
               nextTime,
-              beat * 1.45,
+              beat * 3.35,
               "sine",
-              0.15,
+              0.078,
+              0.045,
+              420,
+            );
+            scheduleKick(nextTime);
+          }
+
+          const semitone = melody[step % melody.length];
+          if (semitone !== null) {
+            scheduleTone(
+              146.83 * 2 ** (semitone / 12),
+              nextTime,
+              beat * 1.35,
+              "sine",
+              0.045,
+              0.08,
+              1450,
             );
           }
-          if (step % 4 === 0 || step % 4 === 3) {
-            scheduleNote(58, nextTime, 0.09, "square", 0.045);
-          }
+
           step += 1;
           nextTime += beat;
         }
