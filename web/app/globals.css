@@ -881,6 +881,20 @@ button {
   display: none;
 }
 
+.pet-portrait-image {
+  position: absolute;
+  inset: 0.18rem;
+  width: calc(100% - 0.36rem);
+  height: calc(100% - 0.36rem);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 0.72rem;
+  object-fit: cover;
+  object-position: center;
+  box-shadow:
+    0 0.24rem 0.6rem rgba(0, 24, 39, 0.2),
+    inset 0 0 0 1px rgba(7, 27, 43, 0.08);
+}
+
 .pet-portrait,
 .pet-portrait span {
   position: absolute;

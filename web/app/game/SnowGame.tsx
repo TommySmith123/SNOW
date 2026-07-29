@@ -939,88 +939,134 @@ function drawHamster(
   ctx.ellipse(1, 20 + hop, 18, 5.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Poster-style plush orange body with a darker saddle.
-  const hamsterCoat = ctx.createLinearGradient(-18, -14, 15, 18);
-  hamsterCoat.addColorStop(0, "#ffc45d");
-  hamsterCoat.addColorStop(0.48, "#ee9236");
-  hamsterCoat.addColorStop(1, "#bd5c24");
+  // Long-haired golden Syrian hamster: the uneven silhouette and layered
+  // cream mane stay readable after the native canvas is scaled down.
+  const hamsterCoat = ctx.createLinearGradient(-21, -15, 17, 18);
+  hamsterCoat.addColorStop(0, "#ffd981");
+  hamsterCoat.addColorStop(0.46, "#eda348");
+  hamsterCoat.addColorStop(1, "#b96529");
   ctx.fillStyle = hamsterCoat;
-  ctx.strokeStyle = "#70401f";
-  ctx.lineWidth = 2.7;
+  ctx.strokeStyle = "#6b3d20";
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.ellipse(-3, 1, 17.5, 17, -0.23, 0, Math.PI * 2);
+  ctx.moveTo(-22, 5);
+  ctx.quadraticCurveTo(-24, -3, -18, -8);
+  ctx.lineTo(-20, -13);
+  ctx.lineTo(-13, -11);
+  ctx.lineTo(-11, -17);
+  ctx.lineTo(-5, -13);
+  ctx.lineTo(0, -17);
+  ctx.lineTo(3, -11);
+  ctx.quadraticCurveTo(10, -8, 12, 0);
+  ctx.lineTo(16, 3);
+  ctx.lineTo(12, 7);
+  ctx.lineTo(14, 12);
+  ctx.lineTo(8, 13);
+  ctx.lineTo(5, 18);
+  ctx.lineTo(-1, 15);
+  ctx.lineTo(-7, 19);
+  ctx.lineTo(-10, 14);
+  ctx.lineTo(-17, 15);
+  ctx.lineTo(-16, 10);
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  ctx.strokeStyle = "rgba(113,55,26,.55)";
-  ctx.lineWidth = 2;
+  ctx.fillStyle = "#fff0c9";
   ctx.beginPath();
-  ctx.arc(-8, -1, 9, -1.2, 0.35);
-  ctx.moveTo(-7, -9);
-  ctx.quadraticCurveTo(-2, -2, -5, 8);
-  ctx.stroke();
-
-  ctx.fillStyle = "#fff0c7";
-  ctx.beginPath();
-  ctx.ellipse(-2, 7, 11, 9.5, -0.12, 0, Math.PI * 2);
+  ctx.ellipse(-5, 8, 11.5, 8.7, -0.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Head leads downhill but keeps the poster's round cheeks and open expression.
-  ctx.fillStyle = "#ef963a";
-  ctx.strokeStyle = "#70401f";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "rgba(118, 64, 29, .54)";
+  ctx.lineWidth = 1.35;
+  ctx.lineCap = "round";
+  for (const [x, y, dx, dy] of [
+    [-15, -7, 6, 4],
+    [-10, -11, 7, 5],
+    [-4, -12, 6, 6],
+    [-15, 1, 7, 2],
+    [-12, 5, 6, 3],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + dx * 0.55, y + dy * 0.2, x + dx, y + dy);
+    ctx.stroke();
+  }
+
+  // The fluffy cheek mane leads downhill without turning into a round dwarf
+  // hamster silhouette.
+  ctx.fillStyle = "#efa84d";
+  ctx.strokeStyle = "#6b3d20";
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.ellipse(8, 6, 13.5, 12.5, 0.16, 0, Math.PI * 2);
+  ctx.moveTo(-1, 2);
+  ctx.lineTo(0, -4);
+  ctx.lineTo(5, -3);
+  ctx.lineTo(8, -8);
+  ctx.lineTo(12, -4);
+  ctx.lineTo(17, -6);
+  ctx.lineTo(18, -1);
+  ctx.quadraticCurveTo(23, 2, 22, 8);
+  ctx.lineTo(25, 12);
+  ctx.lineTo(20, 14);
+  ctx.lineTo(18, 19);
+  ctx.lineTo(13, 17);
+  ctx.lineTo(9, 20);
+  ctx.lineTo(6, 16);
+  ctx.lineTo(1, 16);
+  ctx.lineTo(3, 11);
+  ctx.lineTo(-1, 8);
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
-  for (const [earX, earY, size] of [[1, -3, 5.4], [14, -2, 5]] as const) {
-    ctx.fillStyle = "#ef963a";
+  for (const [earX, earY, size] of [[4, -3, 4.8], [16, -2, 4.5]] as const) {
+    ctx.fillStyle = "#d98a42";
     ctx.beginPath();
     ctx.arc(earX, earY, size, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#f4a69a";
+    ctx.fillStyle = "#eaa195";
     ctx.beginPath();
     ctx.arc(earX + 0.5, earY + 0.5, size * 0.5, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.fillStyle = "#fff1cc";
+  ctx.fillStyle = "#fff2d3";
   ctx.beginPath();
-  ctx.ellipse(8.7, 12, 10.2, 7.2, 0.14, 0, Math.PI * 2);
+  ctx.ellipse(11.4, 11.5, 10.8, 7.6, 0.12, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.fillStyle = "rgba(255,255,255,.48)";
   ctx.beginPath();
-  ctx.ellipse(2.8, 8.8, 5.5, 5.2, 0.1, 0, Math.PI * 2);
+  ctx.ellipse(4.8, 9, 6.5, 6.2, 0.08, 0, Math.PI * 2);
   ctx.fill();
 
-  drawPetEye(ctx, 3.1, 5.1, 2.35, 3, "#18150f");
-  drawPetEye(ctx, 11.8, 4.8, 2.8, 3.5, "#18150f");
+  drawPetEye(ctx, 6.2, 5.6, 2.45, 3.2, "#18150f");
+  drawPetEye(ctx, 15.3, 5.2, 2.85, 3.6, "#18150f");
 
-  ctx.fillStyle = "#dc6c6d";
+  ctx.fillStyle = "#dd7777";
   ctx.beginPath();
-  ctx.arc(17.2, 11.5, 2, 0, Math.PI * 2);
+  ctx.arc(20, 11.2, 1.9, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "#70401f";
+  ctx.strokeStyle = "#6b3d20";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.moveTo(14.5, 12.2);
-  ctx.quadraticCurveTo(13.2, 16.5, 9.5, 15);
-  ctx.moveTo(14.3, 11.5);
-  ctx.lineTo(24, 8);
-  ctx.moveTo(14.3, 13);
-  ctx.lineTo(24, 16);
+  ctx.moveTo(18.3, 12.1);
+  ctx.quadraticCurveTo(16.7, 16.1, 13.2, 14.9);
+  ctx.moveTo(18.5, 11.2);
+  ctx.lineTo(27, 8.2);
+  ctx.moveTo(18.5, 12.8);
+  ctx.lineTo(27, 16);
   ctx.stroke();
 
-  ctx.fillStyle = "#ffe1a3";
-  ctx.strokeStyle = "#70401f";
+  ctx.fillStyle = "#ffe4b1";
+  ctx.strokeStyle = "#6b3d20";
   ctx.lineWidth = 1.3;
-  for (const [pawX, pawY] of [[4, 17], [13, 18]] as const) {
+  for (const [pawX, pawY] of [[7, 18], [17, 19]] as const) {
     ctx.beginPath();
-    ctx.ellipse(pawX, pawY, 4.8, 3.4, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(pawX, pawY, 5.1, 3.5, 0.18, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
@@ -1162,35 +1208,32 @@ function drawGoldenCat(
   ctx.restore();
 }
 
-function drawPawPrints(
+function drawPetSnowTrail(
   ctx: CanvasRenderingContext2D,
   model: GameModel,
   lagMeters: number,
   sideOffset: number,
   color: string,
 ) {
-  for (let step = 1; step <= 6; step++) {
-    const foot = step % 2 === 0 ? -1 : 1;
-    const position = trailPosition(
-      model,
-      lagMeters + step * 2.15,
-      sideOffset + foot * 2.8,
-    );
-    const alpha = Math.max(0.08, 0.32 - step * 0.035);
-    ctx.save();
-    ctx.translate(position.x, position.y);
-    ctx.rotate(position.angle);
-    ctx.fillStyle = color.replace("ALPHA", alpha.toFixed(3));
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const lane of [-2.1, 2.1]) {
     ctx.beginPath();
-    ctx.ellipse(0, 0, 2.6, 3.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    for (const toeX of [-2.5, 0, 2.5]) {
-      ctx.beginPath();
-      ctx.arc(toeX, -3.8, 1.05, 0, Math.PI * 2);
-      ctx.fill();
+    for (let step = 1; step <= 9; step++) {
+      const position = trailPosition(
+        model,
+        lagMeters + step * 1.35,
+        sideOffset + lane,
+      );
+      if (step === 1) ctx.moveTo(position.x, position.y);
+      else ctx.lineTo(position.x, position.y);
     }
-    ctx.restore();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.35;
+    ctx.stroke();
   }
+  ctx.restore();
 }
 
 function drawCompanions(
@@ -1199,7 +1242,7 @@ function drawCompanions(
   profile: ShopProfile,
 ) {
   if (profile.equippedPets.includes("pet-digger")) {
-    drawPawPrints(ctx, model, 11, 20, "rgba(143,113,76,ALPHA)");
+    drawPetSnowTrail(ctx, model, 11, 20, "rgba(116, 156, 166, .18)");
     drawHamster(
       ctx,
       trailPosition(model, 11, 20),
@@ -1207,7 +1250,7 @@ function drawCompanions(
     );
   }
   if (profile.equippedPets.includes("pet-car")) {
-    drawPawPrints(ctx, model, 19, -23, "rgba(112,91,64,ALPHA)");
+    drawPetSnowTrail(ctx, model, 19, -23, "rgba(105, 145, 156, .16)");
     drawGoldenCat(
       ctx,
       trailPosition(model, 19, -23),

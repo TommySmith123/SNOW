@@ -100,7 +100,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.doesNotMatch(game, /GAME\.playerY \+ crouch \+ Math\.cos/);
   assert.match(game, /drawHamster/);
   assert.match(game, /drawGoldenCat/);
-  assert.match(game, /drawPawPrints/);
+  assert.match(game, /drawPetSnowTrail/);
   assert.match(game, /tangentStart/);
   assert.match(game, /Keep longitudinal lag monotonic/);
   assert.doesNotMatch(game, /perpendicularY/);
@@ -125,6 +125,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /rewardForRun/);
   assert.match(game, /equippedPets\.includes\("pet-digger"\)/);
   assert.match(game, /equippedPets\.includes\("pet-car"\) \? 1 : 0/);
+  assert.match(game, /function drawPetSnowTrail/);
+  assert.doesNotMatch(game, /function drawPawPrints/);
+  assert.match(game, /Long-haired golden Syrian hamster/);
   assert.match(game, /getBoard\(currentProfile\)/);
   assert.doesNotMatch(game, /offTrack > 68/);
   assert.match(shop, /shushu-profile-v2/);
@@ -140,6 +143,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(shop, /id: "jacket-star"/);
   assert.match(shop, /id: "hat-trapper"/);
   assert.match(shop, /name: "挖挖机"/);
+  assert.match(shop, /毛茸茸金丝熊/);
+  assert.match(shopModal, /digger-golden-hamster\.png/);
   assert.match(shop, /name: "车车"/);
   assert.match(shop, /coins: Math\.max\(99_999, profile\.coins\)/);
   assert.match(shopModal, /启用商城测试模式/);
@@ -185,7 +190,8 @@ test("keeps PWA and native mobile delivery separate", async () => {
   assert.equal(pwa.orientation, "portrait");
   assert.ok(pwa.icons.some((icon) => icon.sizes === "192x192"));
   assert.ok(pwa.icons.some((icon) => icon.sizes === "512x512"));
-  assert.match(serviceWorker, /shushu-snowline-v1/);
+  assert.match(serviceWorker, /shushu-snowline-v2/);
+  assert.match(serviceWorker, /digger-golden-hamster\.png/);
   assert.match(serviceWorker, /caches\.open/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);

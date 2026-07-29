@@ -398,9 +398,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: "挖挖机",
     category: "pet",
     price: 360,
-    description: "橘色仓鼠 · 跟随时本局薯薯币 +25%",
-    color: "#e98732",
-    accent: "#ffe1ad",
+    description: "毛茸茸金丝熊 · 跟随时本局薯薯币 +25%",
+    color: "#e6a348",
+    accent: "#fff0ca",
   },
   {
     id: "pet-car",

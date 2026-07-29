@@ -4,7 +4,7 @@ import "./globals.css";
 
 const title = "薯薯雪线 — 单板无尽滑雪";
 const description =
-  "赢取薯薯币、搭配雪板与雪服，带着挖挖机和金渐层猫车车在无限雪道上刷新纪录。";
+  "赢取薯薯币、搭配雪板与雪服，带着金丝熊挖挖机和金渐层猫车车在无限雪道上刷新纪录。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: `${origin}/og.png`,
           width: 1536,
           height: 1024,
-          alt: "薯薯雪线主角、仓鼠挖挖机和金渐层猫车车一起滑雪",
+          alt: "薯薯雪线主角、金丝熊挖挖机和金渐层猫车车一起滑雪",
         },
       ],
     },

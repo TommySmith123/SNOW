@@ -8,6 +8,7 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root: directory,
   base: "./",
+  publicDir: path.resolve(directory, "../web/public"),
   plugins: [react()],
   resolve: {
     dedupe: ["react", "react-dom"],

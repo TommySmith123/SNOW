@@ -21,8 +21,21 @@ const CATEGORIES: Array<{ id: ShopCategory; label: string }> = [
 
 function PetPortrait({ id }: { id: string }) {
   const hamster = id === "pet-digger";
+  if (hamster) {
+    return (
+      // The shared component also runs inside Capacitor, where next/image is
+      // unavailable; this local static asset is intentionally a plain image.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        className="pet-portrait-image"
+        src="/pets/digger-golden-hamster.png"
+        alt=""
+        aria-hidden="true"
+      />
+    );
+  }
   return (
-    <span className={`pet-portrait ${hamster ? "is-hamster" : "is-golden-cat"}`}>
+    <span className="pet-portrait is-golden-cat">
       <span className="pet-tail" />
       <span className="pet-body">
         <span className="pet-stripe pet-stripe-one" />
