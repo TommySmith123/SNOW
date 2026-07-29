@@ -100,13 +100,26 @@ function roundedRect(
   ctx.roundRect(x, y, w, h, radius);
 }
 
-function boardContact(model: GameModel) {
+function riderRotation(model: GameModel) {
   const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const tuck = model.stance === "tuck";
   const brake = model.stance === "brake";
-  const edgeRotation =
+  return (
     (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) +
-    (brake ? model.edge * 0.42 : 0);
+    (brake ? model.edge * 0.16 : 0)
+  );
+}
+
+function boardTurn(model: GameModel) {
+  return model.stance === "brake" ? model.edge * (Math.PI / 2) : 0;
+}
+
+function boardRotation(model: GameModel) {
+  return riderRotation(model) + boardTurn(model);
+}
+
+function boardContact(model: GameModel) {
+  const edgeRotation = boardRotation(model);
   const boardOffset = 28;
   const boardY = GAME.playerY + Math.cos(edgeRotation) * boardOffset;
 
@@ -397,14 +410,13 @@ function drawShield(ctx: CanvasRenderingContext2D, model: GameModel) {
 function drawPantsDecoration(
   ctx: CanvasRenderingContext2D,
   pants: ShopItem,
-  tuck: boolean,
-  brake: boolean,
+  legs: ReadonlyArray<{
+    knee: { x: number; y: number };
+    foot: { x: number; y: number };
+  }>,
 ) {
   if (!pants.style) return;
   const accent = pants.accent ?? "#fff";
-  const leftFoot = brake ? -21 : -14;
-  const rightFoot = brake ? 21 : 14;
-  const kneeY = tuck ? 13 : 16;
 
   ctx.save();
   ctx.strokeStyle = accent;
@@ -412,36 +424,58 @@ function drawPantsDecoration(
   ctx.lineCap = "round";
 
   if (pants.style === "checker") {
-    for (const x of [-10, 7]) {
-      ctx.fillRect(x - 3, kneeY - 3, 3, 3);
-      ctx.fillRect(x, kneeY, 3, 3);
+    for (const { knee } of legs) {
+      ctx.fillRect(knee.x - 4, knee.y - 4, 4, 4);
+      ctx.fillRect(knee.x, knee.y, 4, 4);
     }
   } else if (pants.style === "cargo") {
-    ctx.lineWidth = 1.5;
-    for (const x of [-11, 8]) {
-      roundedRect(ctx, x - 3, kneeY - 4, 6, 6, 1.5);
+    ctx.lineWidth = 2;
+    for (const { knee } of legs) {
+      roundedRect(ctx, knee.x - 4.5, knee.y - 5, 9, 8, 2);
       ctx.stroke();
     }
   } else if (pants.style === "flame") {
-    ctx.lineWidth = 2.4;
-    for (const [startX, footX] of [[-11, leftFoot], [10, rightFoot]] as const) {
+    ctx.lineWidth = 3;
+    for (const { knee, foot } of legs) {
       ctx.beginPath();
-      ctx.moveTo(startX, kneeY - 1);
-      ctx.lineTo((startX + footX) / 2 + 3, kneeY + 4);
-      ctx.lineTo((startX + footX) / 2 - 1, kneeY + 6);
-      ctx.lineTo(footX, tuck ? 20 : 25);
+      ctx.moveTo(knee.x - 3, knee.y - 2);
+      ctx.lineTo((knee.x + foot.x) / 2 + 4, (knee.y + foot.y) / 2);
+      ctx.lineTo((knee.x + foot.x) / 2 - 2, (knee.y + foot.y) / 2 + 4);
+      ctx.lineTo(foot.x, foot.y - 2);
       ctx.stroke();
     }
   } else if (pants.style === "aurora") {
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.moveTo(-8, tuck ? 3 : 6);
-    ctx.quadraticCurveTo(-5, kneeY, leftFoot, tuck ? 20 : 25);
-    ctx.moveTo(7, tuck ? 3 : 6);
-    ctx.quadraticCurveTo(5, kneeY, rightFoot, tuck ? 20 : 25);
-    ctx.stroke();
+    ctx.lineWidth = 3;
+    for (const { knee, foot } of legs) {
+      ctx.beginPath();
+      ctx.moveTo(knee.x - 3, knee.y - 4);
+      ctx.quadraticCurveTo(
+        knee.x + 5,
+        knee.y + 5,
+        foot.x + 1,
+        foot.y - 2,
+      );
+      ctx.stroke();
+    }
   }
   ctx.restore();
+}
+
+function rotatePointAround(
+  x: number,
+  y: number,
+  pivotX: number,
+  pivotY: number,
+  angle: number,
+) {
+  const dx = x - pivotX;
+  const dy = y - pivotY;
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  return {
+    x: pivotX + dx * cosine - dy * sine,
+    y: pivotY + dx * sine + dy * cosine,
+  };
 }
 
 function drawJacketDecoration(
@@ -622,14 +656,47 @@ function drawBoarder(
   const jacketStyle = getShopItem(profile.equipped.jacket);
   const gogglesStyle = getShopItem(profile.equipped.goggles);
   const hatStyle = getShopItem(profile.equipped.hat);
-  const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const y = GAME.playerY - air;
   const tuck = model.stance === "tuck" && !isAirborne(model);
   const brake = model.stance === "brake" && !isAirborne(model);
   const crouch = tuck ? 12 : brake ? 5 : 0;
-  const edgeRotation =
-    (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) +
-    (brake ? model.edge * 0.42 : 0);
+  const edgeRotation = riderRotation(model);
+  const brakeBoardTurn = brake ? boardTurn(model) : 0;
+  const boardPivotY = 27.5;
+  const leftBinding = rotatePointAround(
+    -14,
+    26,
+    0,
+    boardPivotY,
+    brakeBoardTurn,
+  );
+  const rightBinding = rotatePointAround(
+    14,
+    26,
+    0,
+    boardPivotY,
+    brakeBoardTurn,
+  );
+  const leftFoot = { x: leftBinding.x, y: leftBinding.y - crouch };
+  const rightFoot = { x: rightBinding.x, y: rightBinding.y - crouch };
+  const legs = [
+    {
+      hip: { x: -8, y: tuck ? 2 : 5 },
+      knee: {
+        x: (-8 + leftFoot.x) / 2 - (brake ? model.edge * 5 : 2),
+        y: (tuck ? 2 : 5) + (leftFoot.y - (tuck ? 2 : 5)) * 0.52,
+      },
+      foot: leftFoot,
+    },
+    {
+      hip: { x: 7, y: tuck ? 2 : 5 },
+      knee: {
+        x: (7 + rightFoot.x) / 2 + (brake ? model.edge * 5 : 2),
+        y: (tuck ? 2 : 5) + (rightFoot.y - (tuck ? 2 : 5)) * 0.52,
+      },
+      foot: rightFoot,
+    },
+  ] as const;
 
   ctx.save();
   ctx.translate(model.playerX + 5, GAME.playerY + 18);
@@ -649,6 +716,10 @@ function drawBoarder(
 
   // Loose snow is drawn as small white flecks, never as twin "thruster" beams.
   if (!isAirborne(model) && model.status !== "CRASHED") {
+    ctx.save();
+    ctx.translate(0, boardPivotY);
+    ctx.rotate(brakeBoardTurn);
+    ctx.translate(0, -boardPivotY);
     const spray = brake ? 7 : tuck ? 2 : 4;
     ctx.fillStyle = brake ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.58)";
     for (let i = 0; i < spray; i++) {
@@ -663,6 +734,7 @@ function drawBoarder(
       );
       ctx.fill();
     }
+    ctx.restore();
   }
 
   // The snowboard stays pinned to the snow while only the rider's body
@@ -691,17 +763,35 @@ function drawBoarder(
   ctx.fill();
   ctx.stroke();
 
-  // Legs and boots.
-  ctx.strokeStyle = pantsStyle.color;
-  ctx.lineCap = "round";
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.moveTo(-8, tuck ? 2 : 5);
-  ctx.lineTo(brake ? -21 : -14, tuck ? 20 : 25);
-  ctx.moveTo(7, tuck ? 2 : 5);
-  ctx.lineTo(brake ? 21 : 14, tuck ? 20 : 25);
+  // Broad, outlined snow pants stay readable after the mobile canvas scales
+  // down, and their feet remain attached to the rotated brake bindings.
+  ctx.fillStyle = pantsStyle.color;
+  ctx.strokeStyle = "#080a0d";
+  ctx.lineWidth = 3;
+  roundedRect(ctx, -12, tuck ? -1 : 1, 24, 13, 5);
+  ctx.fill();
   ctx.stroke();
-  drawPantsDecoration(ctx, pantsStyle, tuck, brake);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#080a0d";
+  ctx.lineWidth = 15;
+  ctx.beginPath();
+  for (const leg of legs) {
+    ctx.moveTo(leg.hip.x, leg.hip.y);
+    ctx.lineTo(leg.knee.x, leg.knee.y);
+    ctx.lineTo(leg.foot.x, leg.foot.y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = pantsStyle.color;
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  for (const leg of legs) {
+    ctx.moveTo(leg.hip.x, leg.hip.y);
+    ctx.lineTo(leg.knee.x, leg.knee.y);
+    ctx.lineTo(leg.foot.x, leg.foot.y);
+  }
+  ctx.stroke();
+  drawPantsDecoration(ctx, pantsStyle, legs);
 
   // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
@@ -795,6 +885,10 @@ function drawBoarder(
   ctx.restore();
 
   // A conventional snowboard with a pattern shared by its shop preview.
+  ctx.save();
+  ctx.translate(0, boardPivotY);
+  ctx.rotate(brakeBoardTurn);
+  ctx.translate(0, -boardPivotY);
   ctx.strokeStyle = "#071b2b";
   ctx.fillStyle = boardStyle.color;
   ctx.lineWidth = 4;
@@ -812,6 +906,7 @@ function drawBoarder(
     ctx.lineTo(bindingX + 4, 29);
     ctx.stroke();
   }
+  ctx.restore();
   ctx.restore();
 }
 
@@ -872,36 +967,52 @@ function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) 
     };
   }
 
-  const previous = marks[nextIndex - 1];
-  const current = marks[nextIndex];
+  // During a jump the board stops producing ground samples. Once the pet's
+  // target passes the newest sample, hold it on the newest valid tangent
+  // instead of treating -1 as "no history" and snapping to marks[0].
+  const beyondLatest = nextIndex === -1;
+  const segmentEndIndex = beyondLatest ? marks.length - 1 : nextIndex;
+  const previous = marks[segmentEndIndex - 1];
+  const current = marks[segmentEndIndex];
   const span = Math.max(0.001, current.distance - previous.distance);
-  const progress = Math.max(
-    0,
-    Math.min(1, (targetDistance - previous.distance) / span),
-  );
+  const progress = beyondLatest
+    ? 1
+    : Math.max(0, Math.min(1, (targetDistance - previous.distance) / span));
   const baseX = previous.x + (current.x - previous.x) * progress;
   const baseDistance =
     previous.distance + (current.distance - previous.distance) * progress;
   // Average across neighbouring samples so the companion does not snap its
   // heading whenever it crosses from one track segment to the next.
-  const tangentStart = marks[Math.max(0, nextIndex - 2)];
-  const tangentEnd = marks[Math.min(marks.length - 1, nextIndex + 1)];
+  const tangentStart = marks[Math.max(0, segmentEndIndex - 2)];
+  const tangentEnd =
+    marks[Math.min(marks.length - 1, segmentEndIndex + 1)];
   const dx = tangentEnd.x - tangentStart.x;
   const dy =
     (tangentEnd.distance - tangentStart.distance) * GAME.metersToPixels;
   const length = Math.max(1, Math.hypot(dx, dy));
   const perpendicularX = -dy / length;
 
+  const slotDistance = beyondLatest ? targetDistance : baseDistance;
+  const halfTrack = trackWidth(slotDistance) / 2 - 26;
+  const center = trackCenter(slotDistance);
+  const slotX = Math.max(
+    center - halfTrack,
+    Math.min(center + halfTrack, baseX + perpendicularX * sideOffset),
+  );
+
   return {
-    x: baseX + perpendicularX * sideOffset,
+    x: slotX,
     // Keep longitudinal lag monotonic. Sharp turns may move a pet sideways,
     // but can never send it backwards/downhill to an older screen position.
-    y: GAME.playerY + (baseDistance - model.distance) * GAME.metersToPixels,
+    y: beyondLatest
+      ? GAME.playerY - lagMeters * GAME.metersToPixels
+      : GAME.playerY + (baseDistance - model.distance) * GAME.metersToPixels,
     angle: Math.max(
       -0.48,
       Math.min(0.48, Math.atan2(dy, dx) - Math.PI / 2),
     ),
-    historyReady: true,
+    // Synthetic airborne holds position pets but never creates snow marks.
+    historyReady: !beyondLatest,
   };
 }
 
@@ -1762,14 +1873,16 @@ function useAudio() {
 
       const master = audio.createGain();
       const compressor = audio.createDynamicsCompressor();
-      compressor.threshold.setValueAtTime(-16, audio.currentTime);
-      compressor.knee.setValueAtTime(16, audio.currentTime);
-      compressor.ratio.setValueAtTime(6, audio.currentTime);
-      compressor.attack.setValueAtTime(0.008, audio.currentTime);
-      compressor.release.setValueAtTime(0.28, audio.currentTime);
+      const makeup = audio.createGain();
+      compressor.threshold.setValueAtTime(-12, audio.currentTime);
+      compressor.knee.setValueAtTime(12, audio.currentTime);
+      compressor.ratio.setValueAtTime(4, audio.currentTime);
+      compressor.attack.setValueAtTime(0.006, audio.currentTime);
+      compressor.release.setValueAtTime(0.24, audio.currentTime);
+      makeup.gain.setValueAtTime(1.18, audio.currentTime);
       master.gain.setValueAtTime(0.0001, audio.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.42, audio.currentTime + 0.65);
-      master.connect(compressor).connect(audio.destination);
+      master.gain.exponentialRampToValueAtTime(0.84, audio.currentTime + 0.65);
+      master.connect(compressor).connect(makeup).connect(audio.destination);
       musicGainRef.current = master;
 
       // A restrained winter downtempo loop: slow pads and bass establish the
