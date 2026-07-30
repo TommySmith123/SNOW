@@ -103,30 +103,27 @@ function roundedRect(
 function riderRotation(model: GameModel) {
   const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const tuck = model.stance === "tuck";
-  const brake = model.stance === "brake";
-  return (
-    (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) +
-    (brake ? model.edge * 0.16 : 0)
-  );
+  return (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) + boardTurn(model);
 }
 
 function boardTurn(model: GameModel) {
-  return model.stance === "brake" ? model.edge * (Math.PI / 2) : 0;
+  return model.stance === "brake" && !isAirborne(model)
+    ? model.edge * (Math.PI / 2)
+    : 0;
 }
 
 function boardRotation(model: GameModel) {
-  return riderRotation(model) + boardTurn(model);
+  // Braking rotates the rider and board as one rigid 90-degree frame.
+  return riderRotation(model);
 }
 
 function boardContact(model: GameModel) {
-  const edgeRotation = boardRotation(model);
-  const boardOffset = 28;
-  const boardY = GAME.playerY + Math.cos(edgeRotation) * boardOffset;
-
+  // Sample from the stable board pivot so a 90-degree brake turn cannot send
+  // the mark backwards and interrupt the snow trail.
+  const boardPivotY = 27.5;
   return {
-    x: model.playerX - Math.sin(edgeRotation) * boardOffset,
-    distance:
-      model.distance + (boardY - GAME.playerY) / GAME.metersToPixels,
+    x: model.playerX,
+    distance: model.distance + boardPivotY / GAME.metersToPixels,
   };
 }
 
@@ -379,6 +376,56 @@ function drawSnowboardPattern(
       ctx.stroke();
       break;
   }
+  ctx.restore();
+}
+
+function drawBrakeSparks(ctx: CanvasRenderingContext2D, model: GameModel) {
+  if (
+    model.stance !== "brake" ||
+    isAirborne(model) ||
+    model.status === "CRASHED"
+  ) {
+    return;
+  }
+
+  const speedIntensity = Math.max(
+    0,
+    Math.min(1, (model.speed - GAME.minSpeed) / (GAME.maxSpeed - GAME.minSpeed)),
+  );
+  const sparkCount = 4 + Math.floor(speedIntensity * 11);
+  const phase = model.distance * 0.73 + model.speed * 0.11;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  ctx.shadowColor = "#ff9f1c";
+  ctx.shadowBlur = 4 + speedIntensity * 5;
+
+  for (let index = 0; index < sparkCount; index++) {
+    const wave = Math.sin(phase * (1.3 + index * 0.07) + index * 4.17);
+    const shimmer = Math.cos(phase * 1.9 + index * 2.61);
+    const originX = -34 + ((index * 19 + phase * 7) % 68);
+    const originY = 32 + (index % 3) * 1.8;
+    const length = 3.5 + speedIntensity * 9 + Math.abs(wave) * 4;
+    const tailX = originX - model.edge * (2 + Math.abs(shimmer) * 5);
+    const tailY = originY + length;
+
+    ctx.globalAlpha = 0.52 + speedIntensity * 0.34;
+    ctx.strokeStyle = index % 3 === 0 ? "#fff3a3" : "#ff8a24";
+    ctx.lineWidth = index % 4 === 0 ? 2.1 : 1.3;
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(tailX, tailY);
+    ctx.stroke();
+
+    if (index % 3 === 0) {
+      ctx.fillStyle = "#ffd45c";
+      ctx.beginPath();
+      ctx.arc(tailX, tailY, 1.2 + speedIntensity, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -660,8 +707,9 @@ function drawBoarder(
   const tuck = model.stance === "tuck" && !isAirborne(model);
   const brake = model.stance === "brake" && !isAirborne(model);
   const crouch = tuck ? 12 : brake ? 5 : 0;
-  const edgeRotation = riderRotation(model);
-  const brakeBoardTurn = brake ? boardTurn(model) : 0;
+  const edgeRotation = boardRotation(model);
+  // riderRotation already includes the shared 90-degree brake turn.
+  const brakeBoardTurn = 0;
   const boardPivotY = 27.5;
   const leftBinding = rotatePointAround(
     -14,
@@ -708,8 +756,11 @@ function drawBoarder(
   ctx.restore();
 
   ctx.save();
-  ctx.translate(model.playerX, y);
+  // Rotate the complete rider around the board pivot. The board stays planted
+  // on the snow instead of orbiting around the character's head.
+  ctx.translate(model.playerX, y + boardPivotY);
   ctx.rotate(edgeRotation);
+  ctx.translate(0, -boardPivotY);
   if (model.status === "CRASHED") {
     ctx.rotate(model.crashTime * 3.8);
   }
@@ -764,7 +815,7 @@ function drawBoarder(
   ctx.stroke();
 
   // Broad, outlined snow pants stay readable after the mobile canvas scales
-  // down, and their feet remain attached to the rotated brake bindings.
+  // down, and their feet remain attached inside the whole-rider brake frame.
   ctx.fillStyle = pantsStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 3;
@@ -796,7 +847,7 @@ function drawBoarder(
   // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
   ctx.translate(tuck ? model.edge * 6 : 0, tuck ? 5 : 0);
-  ctx.rotate(tuck ? -model.edge * 0.24 : brake ? model.edge * 0.12 : 0);
+  ctx.rotate(tuck ? -model.edge * 0.24 : 0);
   ctx.fillStyle = jacketStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
@@ -883,6 +934,9 @@ function drawBoarder(
   }
   ctx.restore();
   ctx.restore();
+
+  // Warm, short friction sparks appear only beneath a grounded braking board.
+  drawBrakeSparks(ctx, model);
 
   // A conventional snowboard with a pattern shared by its shop preview.
   ctx.save();

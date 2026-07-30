@@ -95,6 +95,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.queuedEdge = inward/);
   assert.match(game, /model\.trackMarks\.push/);
   assert.match(game, /boardContact\(model\)/);
+  assert.match(game, /stable board pivot/);
+  assert.match(game, /distance: model\.distance \+ boardPivotY \/ GAME\.metersToPixels/);
   assert.match(game, /The snowboard stays pinned to the snow/);
   assert.match(game, /ctx\.translate\(model\.playerX, y\)/);
   assert.doesNotMatch(game, /GAME\.playerY \+ crouch \+ Math\.cos/);
@@ -119,8 +121,19 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.stance = "tuck"/);
   assert.match(game, /model\.stance = "brake"/);
   assert.match(game, /model\.edge \* \(Math\.PI \/ 2\)/);
+  assert.match(game, /\+ boardTurn\(model\)/);
   assert.match(game, /function boardRotation/);
+  assert.match(game, /Braking rotates the rider and board as one rigid 90-degree frame/);
+  assert.match(game, /return riderRotation\(model\)/);
+  assert.match(game, /Rotate the complete rider around the board pivot/);
   assert.match(game, /rotatePointAround/);
+  assert.match(game, /function drawBrakeSparks/);
+  assert.match(game, /model\.stance !== "brake"/);
+  assert.match(game, /sparkCount = 4 \+ Math\.floor\(speedIntensity \* 11\)/);
+  assert.match(game, /globalCompositeOperation = "lighter"/);
+  assert.match(game, /#ff8a24/);
+  assert.match(game, /Warm, short friction sparks/);
+  assert.doesNotMatch(game, /brake \? model\.edge \* 0\.12/);
   assert.match(game, /ctx\.lineWidth = 15/);
   assert.match(game, /ctx\.lineWidth = 11/);
   assert.match(game, /Broad, outlined snow pants/);
