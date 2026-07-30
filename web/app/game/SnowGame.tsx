@@ -37,6 +37,10 @@ import {
   type ShopItem,
   type ShopProfile,
 } from "./shop";
+import {
+  resolvePetTrailPosition,
+  type PetTrailPosition,
+} from "./pet-follow";
 
 type HapticKind = "light" | "medium" | "heavy" | "shield";
 
@@ -383,7 +387,7 @@ function drawBrakeSparks(ctx: CanvasRenderingContext2D, model: GameModel) {
   if (
     model.stance !== "brake" ||
     isAirborne(model) ||
-    model.status === "CRASHED"
+    model.status !== "PLAYING"
   ) {
     return;
   }
@@ -392,36 +396,44 @@ function drawBrakeSparks(ctx: CanvasRenderingContext2D, model: GameModel) {
     0,
     Math.min(1, (model.speed - GAME.minSpeed) / (GAME.maxSpeed - GAME.minSpeed)),
   );
-  const sparkCount = 4 + Math.floor(speedIntensity * 11);
+  const sparkCount = 8 + Math.floor(speedIntensity * 12);
   const phase = model.distance * 0.73 + model.speed * 0.11;
 
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
   ctx.lineCap = "round";
-  ctx.shadowColor = "#ff9f1c";
-  ctx.shadowBlur = 4 + speedIntensity * 5;
+  ctx.shadowColor = "#ff6b1a";
+  ctx.shadowBlur = 7 + speedIntensity * 7;
 
   for (let index = 0; index < sparkCount; index++) {
     const wave = Math.sin(phase * (1.3 + index * 0.07) + index * 4.17);
     const shimmer = Math.cos(phase * 1.9 + index * 2.61);
-    const originX = -34 + ((index * 19 + phase * 7) % 68);
-    const originY = 32 + (index % 3) * 1.8;
-    const length = 3.5 + speedIntensity * 9 + Math.abs(wave) * 4;
+    const originX = -36 + ((index * 19 + phase * 7) % 72);
+    const originY = 31 + (index % 3) * 1.5;
+    const length = 7 + speedIntensity * 14 + Math.abs(wave) * 5;
     const tailX = originX - model.edge * (2 + Math.abs(shimmer) * 5);
     const tailY = originY + length;
 
-    ctx.globalAlpha = 0.52 + speedIntensity * 0.34;
-    ctx.strokeStyle = index % 3 === 0 ? "#fff3a3" : "#ff8a24";
-    ctx.lineWidth = index % 4 === 0 ? 2.1 : 1.3;
+    ctx.globalAlpha = 0.82 + speedIntensity * 0.18;
+    ctx.strokeStyle = "#e84b16";
+    ctx.lineWidth = index % 4 === 0 ? 3.2 : 2.5;
     ctx.beginPath();
     ctx.moveTo(originX, originY);
     ctx.lineTo(tailX, tailY);
     ctx.stroke();
 
+    ctx.shadowBlur = 3 + speedIntensity * 4;
+    ctx.strokeStyle = index % 3 === 0 ? "#fff5b8" : "#ffd36b";
+    ctx.lineWidth = index % 4 === 0 ? 1.7 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(tailX, tailY);
+    ctx.stroke();
+    ctx.shadowBlur = 7 + speedIntensity * 7;
+
     if (index % 3 === 0) {
-      ctx.fillStyle = "#ffd45c";
+      ctx.fillStyle = "#fff0a0";
       ctx.beginPath();
-      ctx.arc(tailX, tailY, 1.2 + speedIntensity, 0, Math.PI * 2);
+      ctx.arc(tailX, tailY, 1.6 + speedIntensity, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -792,6 +804,13 @@ function drawBoarder(
   // changes height for tuck/brake poses. This keeps the board contact point
   // and its sampled tracks continuous across stance changes.
   ctx.save();
+  // The v16 brake frame pointed the character head-down. Flip only the body
+  // around the binding centre; the snowboard keeps its 90-degree brake angle.
+  if (brake) {
+    ctx.translate(0, boardPivotY);
+    ctx.rotate(Math.PI);
+    ctx.translate(0, -boardPivotY);
+  }
   ctx.translate(0, crouch);
 
   // Deep red hair silhouette from the supplied protagonist reference.
@@ -935,9 +954,6 @@ function drawBoarder(
   ctx.restore();
   ctx.restore();
 
-  // Warm, short friction sparks appear only beneath a grounded braking board.
-  drawBrakeSparks(ctx, model);
-
   // A conventional snowboard with a pattern shared by its shop preview.
   ctx.save();
   ctx.translate(0, boardPivotY);
@@ -961,6 +977,10 @@ function drawBoarder(
     ctx.stroke();
   }
   ctx.restore();
+
+  // Render after the board so the warm core and orange-red outline remain
+  // visible against both the snowboard artwork and bright snow.
+  drawBrakeSparks(ctx, model);
   ctx.restore();
 }
 
@@ -1003,71 +1023,27 @@ function drawTracks(ctx: CanvasRenderingContext2D, model: GameModel) {
   }
 }
 
-function trailPosition(model: GameModel, lagMeters: number, sideOffset: number) {
+function trailPosition(
+  model: GameModel,
+  lagMeters: number,
+  sideOffset: number,
+): PetTrailPosition {
   const targetDistance = model.distance - lagMeters;
-  const marks = model.trackMarks;
-  const nextIndex = marks.findIndex((mark) => mark.distance >= targetDistance);
-
-  if (nextIndex <= 0 || marks.length < 2) {
-    const originX = marks[0]?.x ?? boardContact(model).x;
-    return {
-      // A straight downhill path has a left-facing screen-space normal.
-      // Keep the pre-history slot on that same side so the pet cannot jump
-      // across the rider when the first real history segment becomes usable.
-      x: originX - sideOffset,
-      y: GAME.playerY - lagMeters * GAME.metersToPixels,
-      angle: 0,
-      historyReady: false,
-    };
-  }
-
-  // During a jump the board stops producing ground samples. Once the pet's
-  // target passes the newest sample, hold it on the newest valid tangent
-  // instead of treating -1 as "no history" and snapping to marks[0].
-  const beyondLatest = nextIndex === -1;
-  const segmentEndIndex = beyondLatest ? marks.length - 1 : nextIndex;
-  const previous = marks[segmentEndIndex - 1];
-  const current = marks[segmentEndIndex];
-  const span = Math.max(0.001, current.distance - previous.distance);
-  const progress = beyondLatest
-    ? 1
-    : Math.max(0, Math.min(1, (targetDistance - previous.distance) / span));
-  const baseX = previous.x + (current.x - previous.x) * progress;
-  const baseDistance =
-    previous.distance + (current.distance - previous.distance) * progress;
-  // Average across neighbouring samples so the companion does not snap its
-  // heading whenever it crosses from one track segment to the next.
-  const tangentStart = marks[Math.max(0, segmentEndIndex - 2)];
-  const tangentEnd =
-    marks[Math.min(marks.length - 1, segmentEndIndex + 1)];
-  const dx = tangentEnd.x - tangentStart.x;
-  const dy =
-    (tangentEnd.distance - tangentStart.distance) * GAME.metersToPixels;
-  const length = Math.max(1, Math.hypot(dx, dy));
-  const perpendicularX = -dy / length;
-
-  const slotDistance = beyondLatest ? targetDistance : baseDistance;
-  const halfTrack = trackWidth(slotDistance) / 2 - 26;
-  const center = trackCenter(slotDistance);
-  const slotX = Math.max(
-    center - halfTrack,
-    Math.min(center + halfTrack, baseX + perpendicularX * sideOffset),
-  );
-
-  return {
-    x: slotX,
-    // Keep longitudinal lag monotonic. Sharp turns may move a pet sideways,
-    // but can never send it backwards/downhill to an older screen position.
-    y: beyondLatest
-      ? GAME.playerY - lagMeters * GAME.metersToPixels
-      : GAME.playerY + (baseDistance - model.distance) * GAME.metersToPixels,
-    angle: Math.max(
-      -0.48,
-      Math.min(0.48, Math.atan2(dy, dx) - Math.PI / 2),
-    ),
-    // Synthetic airborne holds position pets but never creates snow marks.
-    historyReady: !beyondLatest,
-  };
+  return resolvePetTrailPosition({
+    currentDistance: model.distance,
+    playerX: model.playerX,
+    playerY: GAME.playerY,
+    metersToPixels: GAME.metersToPixels,
+    lagMeters,
+    sideOffset,
+    marks: model.trackMarks,
+    targetTrackCenter: trackCenter(targetDistance),
+    targetTrackHalfWidth: trackWidth(targetDistance) / 2,
+    maxConnectedGap: GAME.trackSampleMeters * 2.8,
+    viewportMinX: 38,
+    viewportMaxX: GAME.width - 38,
+    followEnvelope: 84 + Math.abs(sideOffset) * 0.5,
+  });
 }
 
 function drawPetEye(
@@ -1928,14 +1904,14 @@ function useAudio() {
       const master = audio.createGain();
       const compressor = audio.createDynamicsCompressor();
       const makeup = audio.createGain();
-      compressor.threshold.setValueAtTime(-12, audio.currentTime);
-      compressor.knee.setValueAtTime(12, audio.currentTime);
-      compressor.ratio.setValueAtTime(4, audio.currentTime);
-      compressor.attack.setValueAtTime(0.006, audio.currentTime);
-      compressor.release.setValueAtTime(0.24, audio.currentTime);
-      makeup.gain.setValueAtTime(1.18, audio.currentTime);
+      compressor.threshold.setValueAtTime(-10, audio.currentTime);
+      compressor.knee.setValueAtTime(10, audio.currentTime);
+      compressor.ratio.setValueAtTime(5, audio.currentTime);
+      compressor.attack.setValueAtTime(0.004, audio.currentTime);
+      compressor.release.setValueAtTime(0.2, audio.currentTime);
+      makeup.gain.setValueAtTime(1.22, audio.currentTime);
       master.gain.setValueAtTime(0.0001, audio.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.84, audio.currentTime + 0.65);
+      master.gain.exponentialRampToValueAtTime(1.05, audio.currentTime + 0.65);
       master.connect(compressor).connect(makeup).connect(audio.destination);
       musicGainRef.current = master;
 
@@ -1991,7 +1967,7 @@ function useAudio() {
         oscillator.type = "sine";
         oscillator.frequency.setValueAtTime(104, at);
         oscillator.frequency.exponentialRampToValueAtTime(46, at + 0.2);
-        gain.gain.setValueAtTime(0.1, at);
+        gain.gain.setValueAtTime(0.14, at);
         gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
         oscillator.connect(gain).connect(master);
         oscillator.start(at);
@@ -2010,7 +1986,7 @@ function useAudio() {
                 nextTime,
                 beat * 7.8,
                 "triangle",
-                0.028,
+                0.05,
                 0.32,
                 920,
               );
@@ -2023,7 +1999,7 @@ function useAudio() {
               nextTime,
               beat * 3.35,
               "sine",
-              0.078,
+              0.13,
               0.045,
               420,
             );
@@ -2037,7 +2013,7 @@ function useAudio() {
               nextTime,
               beat * 1.35,
               "sine",
-              0.045,
+              0.08,
               0.08,
               1450,
             );

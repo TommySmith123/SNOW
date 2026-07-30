@@ -45,10 +45,11 @@ test("server renders the playable Shushu Snowline shell", async () => {
 });
 
 test("keeps core game contracts explicit and configurable", async () => {
-  const [config, engine, game, shop, shopModal, layout, packageJson] = await Promise.all([
+  const [config, engine, game, petFollow, shop, shopModal, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/game/config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/SnowGame.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/game/pet-follow.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/shop.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/ShopModal.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
@@ -103,13 +104,15 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /drawHamster/);
   assert.match(game, /drawGoldenCat/);
   assert.match(game, /drawPetSnowTrail/);
-  assert.match(game, /tangentStart/);
-  assert.match(game, /Keep longitudinal lag monotonic/);
-  assert.match(game, /const beyondLatest = nextIndex === -1/);
-  assert.match(game, /segmentEndIndex = beyondLatest \? marks\.length - 1 : nextIndex/);
-  assert.match(game, /historyReady: !beyondLatest/);
-  assert.match(game, /Synthetic airborne holds position pets but never creates snow marks/);
-  assert.doesNotMatch(game, /perpendicularY/);
+  assert.match(game, /resolvePetTrailPosition/);
+  assert.match(game, /viewportMinX:\s*38/);
+  assert.match(game, /followEnvelope:\s*84/);
+  assert.match(petFollow, /"latest-hold"/);
+  assert.match(petFollow, /findIndex\(\)[\s\S]*returns -1/);
+  assert.match(petFollow, /"gap-bridge"/);
+  assert.match(petFollow, /false,\s*"gap-bridge"/);
+  assert.match(petFollow, /prefer staying near the rider/);
+  assert.match(petFollow, /playerY - input\.lagMeters \* input\.metersToPixels/);
   assert.match(game, /Start a fresh segment after take-off/);
   assert.match(game, /pattern shared by its shop preview/);
   assert.doesNotMatch(game, /rgba\(104, 191, 214/);
@@ -127,12 +130,15 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /return riderRotation\(model\)/);
   assert.match(game, /Rotate the complete rider around the board pivot/);
   assert.match(game, /rotatePointAround/);
+  assert.match(game, /Flip only the body/);
+  assert.match(game, /ctx\.rotate\(Math\.PI\)/);
   assert.match(game, /function drawBrakeSparks/);
   assert.match(game, /model\.stance !== "brake"/);
-  assert.match(game, /sparkCount = 4 \+ Math\.floor\(speedIntensity \* 11\)/);
-  assert.match(game, /globalCompositeOperation = "lighter"/);
-  assert.match(game, /#ff8a24/);
-  assert.match(game, /Warm, short friction sparks/);
+  assert.match(game, /sparkCount = 8 \+ Math\.floor\(speedIntensity \* 12\)/);
+  assert.doesNotMatch(game, /globalCompositeOperation = "lighter"/);
+  assert.match(game, /#e84b16/);
+  assert.match(game, /#fff5b8/);
+  assert.match(game, /Render after the board/);
   assert.doesNotMatch(game, /brake \? model\.edge \* 0\.12/);
   assert.match(game, /ctx\.lineWidth = 15/);
   assert.match(game, /ctx\.lineWidth = 11/);
@@ -142,17 +148,20 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /const beat = 60 \/ 92 \/ 2/);
   assert.match(game, /chordProgression/);
   assert.match(game, /scheduleKick/);
-  assert.match(game, /exponentialRampToValueAtTime\(0\.84/);
-  assert.match(game, /compressor\.ratio\.setValueAtTime\(4/);
-  assert.match(game, /makeup\.gain\.setValueAtTime\(1\.18/);
+  assert.match(game, /exponentialRampToValueAtTime\(1\.05/);
+  assert.match(game, /compressor\.threshold\.setValueAtTime\(-10/);
+  assert.match(game, /compressor\.ratio\.setValueAtTime\(5/);
+  assert.match(game, /makeup\.gain\.setValueAtTime\(1\.22/);
+  assert.match(game, /"triangle",\s*0\.05,\s*0\.32/);
+  assert.match(game, /"sine",\s*0\.13,\s*0\.045,\s*420/);
+  assert.match(game, /"sine",\s*0\.08,\s*0\.08,\s*1450/);
+  assert.match(game, /gain\.gain\.setValueAtTime\(0\.14, at\)/);
   assert.doesNotMatch(game, /"square"/);
   assert.match(game, /rewardForRun/);
   assert.match(game, /equippedPets\.includes\("pet-digger"\)/);
   assert.match(game, /equippedPets\.includes\("pet-car"\) \? 1 : 0/);
   assert.match(game, /function drawPetSnowTrail/);
   assert.doesNotMatch(game, /function drawPawPrints/);
-  assert.match(game, /x:\s*originX - sideOffset/);
-  assert.match(game, /historyReady:\s*false/);
   assert.match(game, /if \(!position\.historyReady\) break/);
   assert.match(game, /if \(positions\.length < 2\) continue/);
   assert.match(game, /Long-haired golden Syrian hamster/);
