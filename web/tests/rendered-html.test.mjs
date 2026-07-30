@@ -45,11 +45,12 @@ test("server renders the playable Shushu Snowline shell", async () => {
 });
 
 test("keeps core game contracts explicit and configurable", async () => {
-  const [config, engine, game, petFollow, shop, shopModal, layout, packageJson] = await Promise.all([
+  const [config, engine, game, petFollow, turning, shop, shopModal, layout, packageJson] = await Promise.all([
     readFile(new URL("../app/game/config.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/engine.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/SnowGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/game/pet-follow.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/game/turning.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/shop.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/game/ShopModal.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
@@ -60,6 +61,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(config, /maxSpeed:\s*150/);
   assert.match(config, /acceleration:\s*16/);
   assert.match(config, /edgeAcceleration/);
+  assert.match(config, /ACTIVE_TURN_STYLE:\s*TurnStyle = "carve"/);
+  assert.match(config, /carveEdgeAcceleration:\s*255/);
+  assert.match(config, /carveVisualMaxAngle:\s*0\.72/);
   assert.match(config, /jumpDuration:\s*1\.04/);
   assert.match(config, /boundaryTurnLock/);
   assert.match(config, /trackSampleMeters/);
@@ -134,11 +138,24 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /ctx\.rotate\(Math\.PI\)/);
   assert.match(game, /function drawBrakeSparks/);
   assert.match(game, /model\.stance !== "brake"/);
-  assert.match(game, /sparkCount = 8 \+ Math\.floor\(speedIntensity \* 12\)/);
+  assert.match(game, /sparkCount = 3 \+ Math\.floor\(speedIntensity \* 3\)/);
   assert.doesNotMatch(game, /globalCompositeOperation = "lighter"/);
-  assert.match(game, /#e84b16/);
-  assert.match(game, /#fff5b8/);
-  assert.match(game, /Render after the board/);
+  assert.match(game, /#d96b32/);
+  assert.match(game, /#ffe5a1/);
+  assert.match(game, /Draw first so the snowboard masks each spark root/);
+  assert.ok(
+    game.indexOf("drawBrakeSparks(ctx, model);") <
+      game.indexOf("// A conventional snowboard"),
+  );
+  assert.match(game, /resolveTurnMotion/);
+  assert.match(game, /resolveBoundaryVelocity/);
+  assert.match(game, /resolveRiderBaseRotation/);
+  assert.match(game, /carveFaceDirection/);
+  assert.match(game, /near eye grows/);
+  assert.match(turning, /style === "carve"/);
+  assert.match(turning, /fallingLeafAcceleration/);
+  assert.match(turning, /Math\.max\(76, Math\.min\(132/);
+  assert.match(turning, /Follow the actual velocity vector/);
   assert.doesNotMatch(game, /brake \? model\.edge \* 0\.12/);
   assert.match(game, /ctx\.lineWidth = 15/);
   assert.match(game, /ctx\.lineWidth = 11/);

@@ -1,3 +1,9 @@
+export type TurnStyle = "falling-leaf" | "carve";
+
+// One-line rollback switch: change this to "falling-leaf" to restore the
+// complete v17 steering, boundary response and rider rotation behavior.
+export const ACTIVE_TURN_STYLE: TurnStyle = "carve";
+
 export const GAME = {
   width: 540,
   height: 960,
@@ -10,6 +16,8 @@ export const GAME = {
   cruiseReturn: 7,
   lateralSpeed: 116,
   edgeAcceleration: 610,
+  carveEdgeAcceleration: 255,
+  carveVisualMaxAngle: 0.72,
   airControl: 0.08,
   jumpDuration: 1.04,
   jumpHeight: 92,

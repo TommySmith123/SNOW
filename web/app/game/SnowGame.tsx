@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ACTIVE_TURN_STYLE,
   GAME,
   type GameModel,
   type GameStatus,
@@ -41,6 +42,11 @@ import {
   resolvePetTrailPosition,
   type PetTrailPosition,
 } from "./pet-follow";
+import {
+  resolveBoundaryVelocity,
+  resolveRiderBaseRotation,
+  resolveTurnMotion,
+} from "./turning";
 
 type HapticKind = "light" | "medium" | "heavy" | "shield";
 
@@ -105,9 +111,19 @@ function roundedRect(
 }
 
 function riderRotation(model: GameModel) {
-  const lean = Math.max(-0.5, Math.min(0.5, model.lateralVelocity / 280));
   const tuck = model.stance === "tuck";
-  return (model.edge * 0.32 + lean) * (tuck ? 0.68 : 1) + boardTurn(model);
+  const downhillPixelsPerSecond =
+    (model.speed / 3.6) * GAME.metersToPixels;
+  return (
+    resolveRiderBaseRotation({
+      style: ACTIVE_TURN_STYLE,
+      edge: model.edge,
+      lateralVelocity: model.lateralVelocity,
+      downhillPixelsPerSecond,
+      carveVisualMaxAngle: GAME.carveVisualMaxAngle,
+      tuck,
+    }) + boardTurn(model)
+  );
 }
 
 function boardTurn(model: GameModel) {
@@ -396,44 +412,44 @@ function drawBrakeSparks(ctx: CanvasRenderingContext2D, model: GameModel) {
     0,
     Math.min(1, (model.speed - GAME.minSpeed) / (GAME.maxSpeed - GAME.minSpeed)),
   );
-  const sparkCount = 8 + Math.floor(speedIntensity * 12);
+  const sparkCount = 3 + Math.floor(speedIntensity * 3);
   const phase = model.distance * 0.73 + model.speed * 0.11;
 
   ctx.save();
   ctx.lineCap = "round";
-  ctx.shadowColor = "#ff6b1a";
-  ctx.shadowBlur = 7 + speedIntensity * 7;
+  ctx.shadowColor = "#e97831";
+  ctx.shadowBlur = 2 + speedIntensity * 2;
 
   for (let index = 0; index < sparkCount; index++) {
     const wave = Math.sin(phase * (1.3 + index * 0.07) + index * 4.17);
     const shimmer = Math.cos(phase * 1.9 + index * 2.61);
-    const originX = -36 + ((index * 19 + phase * 7) % 72);
-    const originY = 31 + (index % 3) * 1.5;
-    const length = 7 + speedIntensity * 14 + Math.abs(wave) * 5;
-    const tailX = originX - model.edge * (2 + Math.abs(shimmer) * 5);
+    const originX = -29 + ((index * 23 + phase * 5) % 58);
+    const originY = 31.5 + (index % 2) * 0.8;
+    const length = 4 + speedIntensity * 4 + Math.abs(wave) * 1.8;
+    const tailX = originX - model.edge * (1 + Math.abs(shimmer) * 2.4);
     const tailY = originY + length;
 
-    ctx.globalAlpha = 0.82 + speedIntensity * 0.18;
-    ctx.strokeStyle = "#e84b16";
-    ctx.lineWidth = index % 4 === 0 ? 3.2 : 2.5;
+    ctx.globalAlpha = 0.58 + speedIntensity * 0.2;
+    ctx.strokeStyle = "#d96b32";
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(originX, originY);
     ctx.lineTo(tailX, tailY);
     ctx.stroke();
 
-    ctx.shadowBlur = 3 + speedIntensity * 4;
-    ctx.strokeStyle = index % 3 === 0 ? "#fff5b8" : "#ffd36b";
-    ctx.lineWidth = index % 4 === 0 ? 1.7 : 1.2;
+    ctx.shadowBlur = 1;
+    ctx.strokeStyle = "#ffe5a1";
+    ctx.lineWidth = 0.7;
     ctx.beginPath();
-    ctx.moveTo(originX, originY);
+    ctx.moveTo(originX, originY + 0.8);
     ctx.lineTo(tailX, tailY);
     ctx.stroke();
-    ctx.shadowBlur = 7 + speedIntensity * 7;
+    ctx.shadowBlur = 2 + speedIntensity * 2;
 
-    if (index % 3 === 0) {
-      ctx.fillStyle = "#fff0a0";
+    if (index === 0 && speedIntensity > 0.45) {
+      ctx.fillStyle = "#ffd98a";
       ctx.beginPath();
-      ctx.arc(tailX, tailY, 1.6 + speedIntensity, 0, Math.PI * 2);
+      ctx.arc(tailX, tailY, 0.75 + speedIntensity * 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -723,6 +739,15 @@ function drawBoarder(
   // riderRotation already includes the shared 90-degree brake turn.
   const brakeBoardTurn = 0;
   const boardPivotY = 27.5;
+  const carving =
+    ACTIVE_TURN_STYLE === "carve" && !brake && model.status !== "CRASHED";
+  const carveFaceDirection: -1 | 0 | 1 = carving
+    ? Math.abs(model.lateralVelocity) < 9
+      ? 0
+      : model.lateralVelocity < 0
+        ? -1
+        : 1
+    : 0;
   const leftBinding = rotatePointAround(
     -14,
     26,
@@ -876,23 +901,28 @@ function drawBoarder(
 
   drawJacketDecoration(ctx, jacketStyle, tuck);
 
-  // Face, large black eyes and freckles.
+  // Face, large black eyes and freckles. In carving mode the near eye grows
+  // while the far eye recedes, giving the existing character a side profile.
+  const faceCenterX = tuck
+    ? model.edge * 4
+    : carveFaceDirection * 4.5;
   ctx.fillStyle = "#ffd8ca";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(tuck ? model.edge * 4 : 0, tuck ? -23 : -33, 12, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(faceCenterX, tuck ? -23 : -33, carveFaceDirection ? 11 : 12, 11, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = "#07090e";
   for (const side of [-1, 1]) {
+    const nearEye = carveFaceDirection === 0 || side === carveFaceDirection;
     ctx.beginPath();
     ctx.ellipse(
-      (tuck ? model.edge * 4 : 0) + side * 4.5,
+      faceCenterX + side * (carveFaceDirection ? 3.6 : 4.5),
       tuck ? -25 : -35,
-      3.3,
-      4.3,
+      nearEye ? 3.3 : 2.1,
+      nearEye ? 4.3 : 3.4,
       side * 0.12,
       0,
       Math.PI * 2,
@@ -936,7 +966,7 @@ function drawBoarder(
   drawHatShape(
     ctx,
     hatStyle,
-    tuck ? model.edge * 4 : 0,
+    tuck ? model.edge * 4 : carveFaceDirection * 2.5,
     tuck ? -31 : -41,
   );
 
@@ -953,6 +983,10 @@ function drawBoarder(
   }
   ctx.restore();
   ctx.restore();
+
+  // Draw first so the snowboard masks each spark root. Only the short section
+  // below the lower steel edge remains visible against the snow.
+  drawBrakeSparks(ctx, model);
 
   // A conventional snowboard with a pattern shared by its shop preview.
   ctx.save();
@@ -978,9 +1012,6 @@ function drawBoarder(
   }
   ctx.restore();
 
-  // Render after the board so the warm core and orange-red outline remain
-  // visible against both the snowboard artwork and bright snow.
-  drawBrakeSparks(ctx, model);
   ctx.restore();
 }
 
@@ -1751,14 +1782,20 @@ function update(
   model.playerX += newCenter - previousCenter;
 
   const air = isAirborne(model);
-  const targetLateral =
-    model.edge *
-    GAME.lateralSpeed *
-    (0.72 + model.speed / boardMax) *
-    (air ? GAME.airControl : 1);
-  const delta = targetLateral - model.lateralVelocity;
-  const change = GAME.edgeAcceleration * dt * (air ? 0.12 : 1);
-  model.lateralVelocity += Math.max(-change, Math.min(change, delta));
+  const turnMotion = resolveTurnMotion({
+    style: ACTIVE_TURN_STYLE,
+    edge: model.edge,
+    speed: model.speed,
+    boardMaxSpeed: boardMax,
+    lateralSpeed: GAME.lateralSpeed,
+    lateralVelocity: model.lateralVelocity,
+    fallingLeafAcceleration: GAME.edgeAcceleration,
+    carveAcceleration: GAME.carveEdgeAcceleration,
+    airControl: GAME.airControl,
+    airborne: air,
+    dt,
+  });
+  model.lateralVelocity = turnMotion.nextLateralVelocity;
   model.playerX += model.lateralVelocity * dt;
 
   const half = trackWidth(model.distance) / 2;
@@ -1773,8 +1810,11 @@ function update(
       model.edge = inward;
       model.queuedEdge = inward;
       model.boundaryTurnCooldown = GAME.boundaryTurnLock;
-      model.lateralVelocity =
-        inward * Math.max(76, Math.min(132, Math.abs(model.lateralVelocity) * 0.72));
+      model.lateralVelocity = resolveBoundaryVelocity(
+        ACTIVE_TURN_STYLE,
+        model.lateralVelocity,
+        inward,
+      );
       model.speed = Math.max(GAME.minSpeed, model.speed - 7);
       model.shake = Math.max(model.shake, 5);
       emitSnow(model, 18, 1.5);
