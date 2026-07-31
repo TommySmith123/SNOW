@@ -23,6 +23,13 @@ export type RiderRotationInput = {
   tuck: boolean;
 };
 
+export type BoardHeadingInput = {
+  style: TurnStyle;
+  fallingLeafRotation: number;
+  lateralVelocity: number;
+  downhillPixelsPerSecond: number;
+};
+
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, value));
 }
@@ -91,4 +98,17 @@ export function resolveRiderBaseRotation(input: RiderRotationInput) {
       input.carveVisualMaxAngle,
     ) * (input.tuck ? 0.84 : 1)
   );
+}
+
+export function resolveBoardHeading(input: BoardHeadingInput) {
+  if (input.style === "falling-leaf") {
+    return input.fallingLeafRotation;
+  }
+
+  // The snowboard's local +X end is its fixed nose. atan2() keeps that same
+  // nose pointed along a continuous 0..PI C-shaped heading: right/down,
+  // straight down through the apex, then left/down.
+  const projectedDownhill =
+    Math.max(18, input.downhillPixelsPerSecond) * 1.55;
+  return Math.atan2(projectedDownhill, input.lateralVelocity);
 }

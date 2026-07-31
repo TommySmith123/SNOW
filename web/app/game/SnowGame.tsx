@@ -43,6 +43,7 @@ import {
   type PetTrailPosition,
 } from "./pet-follow";
 import {
+  resolveBoardHeading,
   resolveBoundaryVelocity,
   resolveRiderBaseRotation,
   resolveTurnMotion,
@@ -110,20 +111,22 @@ function roundedRect(
   ctx.roundRect(x, y, w, h, radius);
 }
 
-function riderRotation(model: GameModel) {
+function riderBaseRotation(model: GameModel) {
   const tuck = model.stance === "tuck";
   const downhillPixelsPerSecond =
     (model.speed / 3.6) * GAME.metersToPixels;
-  return (
-    resolveRiderBaseRotation({
-      style: ACTIVE_TURN_STYLE,
-      edge: model.edge,
-      lateralVelocity: model.lateralVelocity,
-      downhillPixelsPerSecond,
-      carveVisualMaxAngle: GAME.carveVisualMaxAngle,
-      tuck,
-    }) + boardTurn(model)
-  );
+  return resolveRiderBaseRotation({
+    style: ACTIVE_TURN_STYLE,
+    edge: model.edge,
+    lateralVelocity: model.lateralVelocity,
+    downhillPixelsPerSecond,
+    carveVisualMaxAngle: GAME.carveVisualMaxAngle,
+    tuck,
+  });
+}
+
+function riderRotation(model: GameModel) {
+  return riderBaseRotation(model) + boardTurn(model);
 }
 
 function boardTurn(model: GameModel) {
@@ -133,16 +136,30 @@ function boardTurn(model: GameModel) {
 }
 
 function boardRotation(model: GameModel) {
-  // Braking rotates the rider and board as one rigid 90-degree frame.
-  return riderRotation(model);
+  const downhillPixelsPerSecond =
+    (model.speed / 3.6) * GAME.metersToPixels;
+  return (
+    resolveBoardHeading({
+      style: ACTIVE_TURN_STYLE,
+      fallingLeafRotation: riderBaseRotation(model),
+      lateralVelocity: model.lateralVelocity,
+      downhillPixelsPerSecond,
+    }) + boardTurn(model)
+  );
 }
 
 function boardContact(model: GameModel) {
-  // Sample from the stable board pivot so a 90-degree brake turn cannot send
-  // the mark backwards and interrupt the snow trail.
+  // Keep world distance monotonic at the stable pivot, but sample horizontal
+  // position at the fixed physical tail opposite the marked +X board nose.
   const boardPivotY = 27.5;
+  const tailLocalX = -29;
+  const tailLocalY = 3;
+  const rotation = boardRotation(model);
   return {
-    x: model.playerX,
+    x:
+      model.playerX +
+      tailLocalX * Math.cos(rotation) -
+      tailLocalY * Math.sin(rotation),
     distance: model.distance + boardPivotY / GAME.metersToPixels,
   };
 }
@@ -396,6 +413,26 @@ function drawSnowboardPattern(
       ctx.stroke();
       break;
   }
+  ctx.restore();
+}
+
+function drawCarveNoseMarker(
+  ctx: CanvasRenderingContext2D,
+  board: ShopItem,
+  brake: boolean,
+) {
+  if (ACTIVE_TURN_STYLE !== "carve") return;
+  const noseX = brake ? 29 : 25;
+  ctx.save();
+  ctx.strokeStyle = board.accent ?? "#eaff9f";
+  ctx.lineWidth = 1.45;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(noseX - 5, 24);
+  ctx.lineTo(noseX + 1, 27.5);
+  ctx.lineTo(noseX - 5, 31);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -735,9 +772,8 @@ function drawBoarder(
   const tuck = model.stance === "tuck" && !isAirborne(model);
   const brake = model.stance === "brake" && !isAirborne(model);
   const crouch = tuck ? 12 : brake ? 5 : 0;
-  const edgeRotation = boardRotation(model);
-  // riderRotation already includes the shared 90-degree brake turn.
-  const brakeBoardTurn = 0;
+  const riderFrameRotation = riderRotation(model);
+  const boardRelativeTurn = boardRotation(model) - riderFrameRotation;
   const boardPivotY = 27.5;
   const carving =
     ACTIVE_TURN_STYLE === "carve" && !brake && model.status !== "CRASHED";
@@ -753,14 +789,14 @@ function drawBoarder(
     26,
     0,
     boardPivotY,
-    brakeBoardTurn,
+    boardRelativeTurn,
   );
   const rightBinding = rotatePointAround(
     14,
     26,
     0,
     boardPivotY,
-    brakeBoardTurn,
+    boardRelativeTurn,
   );
   const leftFoot = { x: leftBinding.x, y: leftBinding.y - crouch };
   const rightFoot = { x: rightBinding.x, y: rightBinding.y - crouch };
@@ -796,7 +832,7 @@ function drawBoarder(
   // Rotate the complete rider around the board pivot. The board stays planted
   // on the snow instead of orbiting around the character's head.
   ctx.translate(model.playerX, y + boardPivotY);
-  ctx.rotate(edgeRotation);
+  ctx.rotate(riderFrameRotation);
   ctx.translate(0, -boardPivotY);
   if (model.status === "CRASHED") {
     ctx.rotate(model.crashTime * 3.8);
@@ -806,7 +842,7 @@ function drawBoarder(
   if (!isAirborne(model) && model.status !== "CRASHED") {
     ctx.save();
     ctx.translate(0, boardPivotY);
-    ctx.rotate(brakeBoardTurn);
+    ctx.rotate(boardRelativeTurn);
     ctx.translate(0, -boardPivotY);
     const spray = brake ? 7 : tuck ? 2 : 4;
     ctx.fillStyle = brake ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.58)";
@@ -986,12 +1022,17 @@ function drawBoarder(
 
   // Draw first so the snowboard masks each spark root. Only the short section
   // below the lower steel edge remains visible against the snow.
+  ctx.save();
+  ctx.translate(0, boardPivotY);
+  ctx.rotate(boardRelativeTurn);
+  ctx.translate(0, -boardPivotY);
   drawBrakeSparks(ctx, model);
+  ctx.restore();
 
   // A conventional snowboard with a pattern shared by its shop preview.
   ctx.save();
   ctx.translate(0, boardPivotY);
-  ctx.rotate(brakeBoardTurn);
+  ctx.rotate(boardRelativeTurn);
   ctx.translate(0, -boardPivotY);
   ctx.strokeStyle = "#071b2b";
   ctx.fillStyle = boardStyle.color;
@@ -1001,6 +1042,7 @@ function drawBoarder(
   ctx.stroke();
 
   drawSnowboardPattern(ctx, boardStyle, brake);
+  drawCarveNoseMarker(ctx, boardStyle, brake);
 
   ctx.strokeStyle = "#1c252d";
   ctx.lineWidth = 3;
@@ -1030,27 +1072,17 @@ function drawTracks(ctx: CanvasRenderingContext2D, model: GameModel) {
     const gap = current.distance - previous.distance;
     if (gap <= 0 || gap > GAME.trackSampleMeters * 2.8) continue;
 
-    const dx = current.x - previous.x;
-    const dy = current.y - previous.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    const offsetX = (-dy / length) * 5.5;
-    const offsetY = (dx / length) * 5.5;
     const age = Math.max(0, model.distance - current.distance);
     const alpha =
       Math.max(0.06, 0.34 * (1 - age / GAME.trackKeepMeters)) *
       current.strength;
 
     ctx.strokeStyle = `rgba(69, 139, 158, ${alpha})`;
-    ctx.lineWidth = 2.2;
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(
-        previous.x + offsetX * side,
-        previous.y + offsetY * side,
-      );
-      ctx.lineTo(current.x + offsetX * side, current.y + offsetY * side);
-      ctx.stroke();
-    }
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(previous.x, previous.y);
+    ctx.lineTo(current.x, current.y);
+    ctx.stroke();
   }
 }
 

@@ -19,6 +19,7 @@ async function loadTurning() {
 }
 
 const {
+  resolveBoardHeading,
   resolveBoundaryVelocity,
   resolveRiderBaseRotation,
   resolveTurnMotion,
@@ -33,7 +34,7 @@ function motion(style, overrides = {}) {
     lateralSpeed: 116,
     lateralVelocity: 0,
     fallingLeafAcceleration: 610,
-    carveAcceleration: 255,
+    carveAcceleration: 430,
     airControl: 0.08,
     airborne: false,
     dt: 0.016,
@@ -64,6 +65,7 @@ test("carve mode crosses the turn apex gradually and follows actual velocity", (
   let lateralVelocity = 105;
   const velocities = [];
   const rotations = [];
+  const boardHeadings = [];
 
   for (let frame = 0; frame < 72; frame++) {
     const result = motion("carve", {
@@ -83,15 +85,27 @@ test("carve mode crosses the turn apex gradually and follows actual velocity", (
         tuck: false,
       }),
     );
+    boardHeadings.push(
+      resolveBoardHeading({
+        style: "carve",
+        fallingLeafRotation: rotations.at(-1),
+        lateralVelocity,
+        downhillPixelsPerSecond: 48,
+      }),
+    );
   }
 
   assert.ok(velocities[0] > 0);
   assert.ok(velocities.at(-1) < 0);
   const crossing = velocities.findIndex((velocity) => velocity <= 0);
   assert.ok(crossing > 10 && crossing < 40);
+  assert.ok(boardHeadings[0] < Math.PI / 2);
+  assert.ok(boardHeadings.at(-1) > Math.PI / 2);
   for (let index = 1; index < velocities.length; index++) {
     assert.ok(velocities[index] <= velocities[index - 1]);
-    assert.ok(Math.abs(rotations[index] - rotations[index - 1]) < 0.08);
+    assert.ok(Math.abs(rotations[index] - rotations[index - 1]) < 0.13);
+    assert.ok(boardHeadings[index] >= boardHeadings[index - 1]);
+    assert.ok(boardHeadings[index] - boardHeadings[index - 1] < 0.13);
   }
   assert.equal(resolveBoundaryVelocity("carve", 126, -1), 0);
 });
@@ -108,4 +122,16 @@ test("carve visuals do not snap when the requested edge changes", () => {
   const afterRequest = resolveRiderBaseRotation({ ...common, edge: -1 });
   assert.equal(before, afterRequest);
   assert.ok(before > 0 && before <= 0.72);
+});
+
+test("falling-leaf rollback bypasses the oriented carve nose heading", () => {
+  assert.equal(
+    resolveBoardHeading({
+      style: "falling-leaf",
+      fallingLeafRotation: -0.46,
+      lateralVelocity: 90,
+      downhillPixelsPerSecond: 48,
+    }),
+    -0.46,
+  );
 });

@@ -16,7 +16,7 @@ export const GAME = {
   cruiseReturn: 7,
   lateralSpeed: 116,
   edgeAcceleration: 610,
-  carveEdgeAcceleration: 255,
+  carveEdgeAcceleration: 430,
   carveVisualMaxAngle: 0.72,
   airControl: 0.08,
   jumpDuration: 1.04,

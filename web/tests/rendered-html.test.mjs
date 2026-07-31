@@ -62,7 +62,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(config, /acceleration:\s*16/);
   assert.match(config, /edgeAcceleration/);
   assert.match(config, /ACTIVE_TURN_STYLE:\s*TurnStyle = "carve"/);
-  assert.match(config, /carveEdgeAcceleration:\s*255/);
+  assert.match(config, /carveEdgeAcceleration:\s*430/);
   assert.match(config, /carveVisualMaxAngle:\s*0\.72/);
   assert.match(config, /jumpDuration:\s*1\.04/);
   assert.match(config, /boundaryTurnLock/);
@@ -100,7 +100,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.queuedEdge = inward/);
   assert.match(game, /model\.trackMarks\.push/);
   assert.match(game, /boardContact\(model\)/);
-  assert.match(game, /stable board pivot/);
+  assert.match(game, /stable pivot/);
+  assert.match(game, /fixed physical tail/);
+  assert.match(game, /tailLocalX = -29/);
   assert.match(game, /distance: model\.distance \+ boardPivotY \/ GAME\.metersToPixels/);
   assert.match(game, /The snowboard stays pinned to the snow/);
   assert.match(game, /ctx\.translate\(model\.playerX, y\)/);
@@ -130,8 +132,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /model\.edge \* \(Math\.PI \/ 2\)/);
   assert.match(game, /\+ boardTurn\(model\)/);
   assert.match(game, /function boardRotation/);
-  assert.match(game, /Braking rotates the rider and board as one rigid 90-degree frame/);
-  assert.match(game, /return riderRotation\(model\)/);
+  assert.match(game, /resolveBoardHeading/);
+  assert.match(game, /boardRelativeTurn/);
+  assert.match(game, /drawCarveNoseMarker/);
+  assert.match(game, /noseX = brake \? 29 : 25/);
   assert.match(game, /Rotate the complete rider around the board pivot/);
   assert.match(game, /rotatePointAround/);
   assert.match(game, /Flip only the body/);
@@ -156,6 +160,14 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /fallingLeafAcceleration/);
   assert.match(turning, /Math\.max\(76, Math\.min\(132/);
   assert.match(turning, /Follow the actual velocity vector/);
+  assert.match(turning, /continuous 0\.\.PI C-shaped heading/);
+  assert.match(turning, /Math\.atan2\(projectedDownhill, input\.lateralVelocity\)/);
+  const trackSource = game.slice(
+    game.indexOf("function drawTracks"),
+    game.indexOf("function trailPosition"),
+  );
+  assert.match(trackSource, /ctx\.lineWidth = 2\.6/);
+  assert.doesNotMatch(trackSource, /offsetX|offsetY|\[-1, 1\]/);
   assert.doesNotMatch(game, /brake \? model\.edge \* 0\.12/);
   assert.match(game, /ctx\.lineWidth = 15/);
   assert.match(game, /ctx\.lineWidth = 11/);
@@ -267,12 +279,18 @@ test("keeps PWA and native mobile delivery separate", async () => {
   assert.match(mobileCss, /grid-template-columns:\s*1fr/);
   assert.match(mobileCss, /\.touch-brake\s*\{[\s\S]*?order:\s*1/);
   assert.match(mobileCss, /\.touch-accelerate\s*\{[\s\S]*?order:\s*2/);
-  assert.match(mobileCss, /5\.4rem minmax\(1\.2rem, 1fr\) 5\.4rem/);
+  assert.match(mobileCss, /5\.4rem minmax\(1\.2rem, 1fr\) 6rem/);
+  assert.match(mobileCss, /bottom:\s*max\([\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?2\.5rem/);
+  assert.match(mobileCss, /width:\s*6rem/);
+  assert.match(mobileCss, /min-height:\s*5rem/);
   assert.match(mobileCss, /\.touch-speed-controls \.touch-action\s*\{[\s\S]*?opacity:\s*0/);
   assert.match(mobileCss, /\.touch-edge::before\s*\{[\s\S]*?content:\s*"↔"/);
   assert.match(mobileCss, /\.touch-jump::before\s*\{[\s\S]*?content:\s*"↑"/);
   assert.match(globalCss, /@media \(max-width:\s*980px\)/);
-  assert.match(globalCss, /5\.4rem minmax\(1\.2rem, 1fr\) 5\.4rem/);
+  assert.match(globalCss, /5\.4rem minmax\(1\.2rem, 1fr\) 6rem/);
+  assert.match(globalCss, /bottom:\s*max\([\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?2\.5rem/);
+  assert.match(globalCss, /width:\s*6rem/);
+  assert.match(globalCss, /min-height:\s*5rem/);
   assert.match(globalCss, /\.touch-brake\s*\{[\s\S]*?order:\s*1/);
   assert.match(globalCss, /\.touch-accelerate\s*\{[\s\S]*?order:\s*2/);
   assert.match(globalCss, /\.touch-speed-controls \.touch-action\s*\{[\s\S]*?opacity:\s*0/);

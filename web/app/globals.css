@@ -1239,10 +1239,14 @@ button {
   }
 
   .touch-controls {
+    bottom: max(
+      3.75rem,
+      calc(env(safe-area-inset-bottom) + 2.5rem)
+    );
     grid-template:
       "edge . speed" auto
       "edge . jump" auto
-      / 5.4rem minmax(1.2rem, 1fr) 5.4rem;
+      / 5.4rem minmax(1.2rem, 1fr) 6rem;
     column-gap: 0.5rem;
     row-gap: 0.55rem;
   }
@@ -1257,8 +1261,8 @@ button {
     grid-area: speed;
     grid-template-columns: 1fr;
     justify-self: end;
-    width: 5.4rem;
-    gap: 0.55rem;
+    width: 6rem;
+    gap: 0.45rem;
   }
 
   .touch-brake {
@@ -1359,7 +1363,7 @@ button {
   }
 
   .touch-speed-controls .touch-action {
-    min-height: 4.15rem;
+    min-height: 5rem;
     padding: 0;
     border: 0;
     background: transparent;
