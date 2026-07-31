@@ -28,6 +28,7 @@ export type BoardHeadingInput = {
   fallingLeafRotation: number;
   lateralVelocity: number;
   downhillPixelsPerSecond: number;
+  stationaryEdge?: -1 | 0 | 1;
 };
 
 function clamp(value: number, minimum: number, maximum: number) {
@@ -110,5 +111,24 @@ export function resolveBoardHeading(input: BoardHeadingInput) {
   // straight down through the apex, then left/down.
   const projectedDownhill =
     Math.max(18, input.downhillPixelsPerSecond) * 1.55;
+  if (
+    input.stationaryEdge &&
+    Math.abs(input.lateralVelocity) < 1
+  ) {
+    return Math.atan2(
+      projectedDownhill,
+      input.stationaryEdge * projectedDownhill * 1.5,
+    );
+  }
   return Math.atan2(projectedDownhill, input.lateralVelocity);
+}
+
+export function resolveFaceBlend(
+  style: TurnStyle,
+  lateralVelocity: number,
+  edge: -1 | 1,
+) {
+  return style === "carve"
+    ? clamp(lateralVelocity / 72, -1, 1)
+    : edge;
 }

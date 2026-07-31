@@ -21,6 +21,7 @@ async function loadTurning() {
 const {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveFaceBlend,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } = await loadTurning();
@@ -134,4 +135,32 @@ test("falling-leaf rollback bypasses the oriented carve nose heading", () => {
     }),
     -0.46,
   );
+});
+
+test("stationary preview is diagonal while a real carve apex stays vertical", () => {
+  const preview = resolveBoardHeading({
+    style: "carve",
+    fallingLeafRotation: 0,
+    lateralVelocity: 0,
+    downhillPixelsPerSecond: 48,
+    stationaryEdge: 1,
+  });
+  const realApex = resolveBoardHeading({
+    style: "carve",
+    fallingLeafRotation: 0,
+    lateralVelocity: 0,
+    downhillPixelsPerSecond: 48,
+    stationaryEdge: 0,
+  });
+  assert.ok(preview > 0.4 && preview < Math.PI / 2);
+  assert.equal(realApex, Math.PI / 2);
+});
+
+test("carve face blend moves continuously through a centered face", () => {
+  assert.equal(resolveFaceBlend("carve", 72, 1), 1);
+  assert.equal(resolveFaceBlend("carve", 36, 1), 0.5);
+  assert.equal(resolveFaceBlend("carve", 0, -1), 0);
+  assert.equal(resolveFaceBlend("carve", -36, -1), -0.5);
+  assert.equal(resolveFaceBlend("carve", -72, -1), -1);
+  assert.equal(resolveFaceBlend("falling-leaf", 0, -1), -1);
 });

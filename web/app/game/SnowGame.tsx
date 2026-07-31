@@ -45,6 +45,7 @@ import {
 import {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveFaceBlend,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } from "./turning";
@@ -144,6 +145,10 @@ function boardRotation(model: GameModel) {
       fallingLeafRotation: riderBaseRotation(model),
       lateralVelocity: model.lateralVelocity,
       downhillPixelsPerSecond,
+      stationaryEdge:
+        model.status === "START" || model.status === "COUNTDOWN"
+          ? model.edge
+          : 0,
     }) + boardTurn(model)
   );
 }
@@ -777,12 +782,12 @@ function drawBoarder(
   const boardPivotY = 27.5;
   const carving =
     ACTIVE_TURN_STYLE === "carve" && !brake && model.status !== "CRASHED";
-  const carveFaceDirection: -1 | 0 | 1 = carving
-    ? Math.abs(model.lateralVelocity) < 9
-      ? 0
-      : model.lateralVelocity < 0
-        ? -1
-        : 1
+  const carveFaceBlend = carving
+    ? resolveFaceBlend(
+        ACTIVE_TURN_STYLE,
+        model.lateralVelocity,
+        model.edge,
+      )
     : 0;
   const leftBinding = rotatePointAround(
     -14,
@@ -926,8 +931,9 @@ function drawBoarder(
 
   // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
-  ctx.translate(tuck ? model.edge * 6 : 0, tuck ? 5 : 0);
-  ctx.rotate(tuck ? -model.edge * 0.24 : 0);
+  const tuckSide = carving ? carveFaceBlend : model.edge;
+  ctx.translate(tuck ? tuckSide * 6 : 0, tuck ? 5 : 0);
+  ctx.rotate(tuck ? -tuckSide * 0.24 : 0);
   ctx.fillStyle = jacketStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
@@ -939,26 +945,39 @@ function drawBoarder(
 
   // Face, large black eyes and freckles. In carving mode the near eye grows
   // while the far eye recedes, giving the existing character a side profile.
-  const faceCenterX = tuck
-    ? model.edge * 4
-    : carveFaceDirection * 4.5;
+  const faceCenterX = carving
+    ? carveFaceBlend * 4.5
+    : tuck
+      ? model.edge * 4
+      : 0;
   ctx.fillStyle = "#ffd8ca";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(faceCenterX, tuck ? -23 : -33, carveFaceDirection ? 11 : 12, 11, 0, 0, Math.PI * 2);
+  ctx.ellipse(
+    faceCenterX,
+    tuck ? -23 : -33,
+    carving ? 12 - Math.abs(carveFaceBlend) : 12,
+    11,
+    0,
+    0,
+    Math.PI * 2,
+  );
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = "#07090e";
   for (const side of [-1, 1]) {
-    const nearEye = carveFaceDirection === 0 || side === carveFaceDirection;
+    const farAmount = carving
+      ? Math.max(0, -side * carveFaceBlend)
+      : 0;
     ctx.beginPath();
     ctx.ellipse(
-      faceCenterX + side * (carveFaceDirection ? 3.6 : 4.5),
+      faceCenterX +
+        side * (4.5 - Math.abs(carveFaceBlend) * 0.9),
       tuck ? -25 : -35,
-      nearEye ? 3.3 : 2.1,
-      nearEye ? 4.3 : 3.4,
+      3.3 - farAmount * 1.2,
+      4.3 - farAmount * 0.9,
       side * 0.12,
       0,
       Math.PI * 2,
@@ -1002,7 +1021,11 @@ function drawBoarder(
   drawHatShape(
     ctx,
     hatStyle,
-    tuck ? model.edge * 4 : carveFaceDirection * 2.5,
+    carving
+      ? carveFaceBlend * 2.5
+      : tuck
+        ? model.edge * 4
+        : 0,
     tuck ? -31 : -41,
   );
 

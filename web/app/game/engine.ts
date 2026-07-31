@@ -1,4 +1,10 @@
-import { GAME, type GameModel, type Obstacle, type ObstacleType } from "./config";
+import {
+  ACTIVE_TURN_STYLE,
+  GAME,
+  type GameModel,
+  type Obstacle,
+  type ObstacleType,
+} from "./config";
 
 export function safeBest(): number {
   if (typeof window === "undefined") return 0;
@@ -19,7 +25,11 @@ export function createGame(best = 0): GameModel {
     best,
     isNewBest: false,
     playerX: GAME.width / 2 - 42,
-    lateralVelocity: 0,
+    lateralVelocity:
+      ACTIVE_TURN_STYLE === "carve"
+        ? GAME.lateralSpeed *
+          (0.72 + GAME.cruiseSpeed / GAME.maxSpeed)
+        : 0,
     edge: 1,
     queuedEdge: 1,
     stance: "coast",

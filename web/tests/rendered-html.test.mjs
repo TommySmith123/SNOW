@@ -72,6 +72,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(config, /crevasseClearance:\s*7/);
   assert.match(config, /"START"[\s\S]*"COUNTDOWN"[\s\S]*"PLAYING"/);
   assert.match(engine, /localStorage\.getItem\("snowline-best"\)/);
+  assert.match(engine, /ACTIVE_TURN_STYLE === "carve"/);
+  assert.match(engine, /GAME\.lateralSpeed[\s\S]*GAME\.cruiseSpeed \/ GAME\.maxSpeed/);
   assert.match(engine, /spawnPattern/);
   assert.match(engine, /trackWidth/);
   assert.match(game, /event\.repeat/);
@@ -154,7 +156,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /resolveTurnMotion/);
   assert.match(game, /resolveBoundaryVelocity/);
   assert.match(game, /resolveRiderBaseRotation/);
-  assert.match(game, /carveFaceDirection/);
+  assert.match(game, /carveFaceBlend/);
+  assert.match(game, /resolveFaceBlend/);
+  assert.match(game, /farAmount/);
+  assert.match(game, /tuckSide = carving \? carveFaceBlend : model\.edge/);
   assert.match(game, /near eye grows/);
   assert.match(turning, /style === "carve"/);
   assert.match(turning, /fallingLeafAcceleration/);
@@ -162,6 +167,8 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /Follow the actual velocity vector/);
   assert.match(turning, /continuous 0\.\.PI C-shaped heading/);
   assert.match(turning, /Math\.atan2\(projectedDownhill, input\.lateralVelocity\)/);
+  assert.match(turning, /stationaryEdge/);
+  assert.match(turning, /lateralVelocity \/ 72/);
   const trackSource = game.slice(
     game.indexOf("function drawTracks"),
     game.indexOf("function trailPosition"),
