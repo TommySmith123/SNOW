@@ -164,12 +164,18 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /resolveRiderBaseRotation/);
   assert.match(game, /carveFaceBlend/);
   assert.match(game, /resolveCarveView/);
+  assert.match(game, /resolveCarveBindingProjection/);
+  assert.match(game, /projectedBindings\.left/);
+  assert.match(game, /projectedBindings\.right/);
+  assert.match(game, /Binding markers share the projected foot coordinates/);
   assert.match(game, /carveFrontAmount/);
   assert.match(game, /carveSideAmount/);
   assert.match(game, /carveBackAmount/);
   assert.match(game, /front three-quarter view/);
   assert.match(game, /faceReveal/);
   assert.match(game, /frontDetailReveal/);
+  assert.match(game, /long red hair lies over the jacket in back view/);
+  assert.match(game, /carveBackAmount \+ carveSideAmount \* 0\.32/);
   assert.match(game, /farAmount/);
   assert.match(game, /tuckSide = carving \? carveFaceBlend : model\.edge/);
   assert.match(game, /face therefore recedes/);
@@ -182,6 +188,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /stationaryEdge/);
   assert.match(turning, /lateralVelocity \/ 72/);
   assert.match(turning, /function resolveCarveView/);
+  assert.match(turning, /function resolveCarveBindingProjection/);
+  assert.match(turning, /halfScreenWidth = 4 \+ Math\.abs\(cosine\) \* 10/);
+  assert.match(turning, /halfDepth = sine \* cosine \* 10/);
   const trackSource = game.slice(
     game.indexOf("function drawTracks"),
     game.indexOf("function trailPosition"),

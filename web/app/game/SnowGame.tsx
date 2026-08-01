@@ -45,6 +45,7 @@ import {
 import {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveCarveBindingProjection,
   resolveCarveView,
   resolveRiderBaseRotation,
   resolveTurnMotion,
@@ -791,20 +792,30 @@ function drawBoarder(
   const carveFrontAmount = carving ? carveView.frontAmount : 1;
   const carveSideAmount = carving ? carveView.sideAmount : 0;
   const carveBackAmount = carving ? carveView.backAmount : 0;
-  const leftBinding = rotatePointAround(
+  const physicalLeftBinding = rotatePointAround(
     -14,
     26,
     0,
     boardPivotY,
     boardRelativeTurn,
   );
-  const rightBinding = rotatePointAround(
+  const physicalRightBinding = rotatePointAround(
     14,
     26,
     0,
     boardPivotY,
     boardRelativeTurn,
   );
+  const projectedBindings = resolveCarveBindingProjection(
+    boardRelativeTurn,
+    boardPivotY,
+  );
+  const leftBinding = carving
+    ? projectedBindings.left
+    : physicalLeftBinding;
+  const rightBinding = carving
+    ? projectedBindings.right
+    : physicalRightBinding;
   const bodyFlip = brake ? Math.PI : 0;
   const leftBodyBinding = rotatePointAround(
     leftBinding.x,
@@ -914,15 +925,23 @@ function drawBoarder(
   drawSnowboardPattern(ctx, boardStyle, brake);
   drawCarveNoseMarker(ctx, boardStyle, brake);
 
+  ctx.restore();
+
+  // Binding markers share the projected foot coordinates. Their screen order
+  // stays left/right while depth compresses around the carve apex, preventing
+  // the legs from crossing when the directed board passes ninety degrees.
   ctx.strokeStyle = "#1c252d";
   ctx.lineWidth = 3;
-  for (const bindingX of [-14, 14]) {
+  for (const binding of [leftBinding, rightBinding]) {
+    ctx.save();
+    ctx.translate(binding.x, binding.y);
+    ctx.rotate(boardRelativeTurn);
     ctx.beginPath();
-    ctx.moveTo(bindingX - 4, 23);
-    ctx.lineTo(bindingX + 4, 29);
+    ctx.moveTo(-4, -3);
+    ctx.lineTo(4, 3);
     ctx.stroke();
+    ctx.restore();
   }
-  ctx.restore();
 
   // The snowboard stays pinned to the snow while only the rider's body
   // changes height for tuck/brake poses. This keeps the board contact point
@@ -1015,6 +1034,32 @@ function drawBoarder(
     ctx.beginPath();
     ctx.moveTo(0, tuck ? -14 : -18);
     ctx.lineTo(0, tuck ? 5 : 9);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // The reference character's long red hair lies over the jacket in back view.
+  // It fades in continuously through the side pose instead of ending at the
+  // collar when the face turns away from the player.
+  if (carving && carveBackAmount + carveSideAmount > 0) {
+    const hairYOffset = tuck ? 10 : 0;
+    ctx.save();
+    ctx.globalAlpha = carveBackAmount + carveSideAmount * 0.32;
+    ctx.fillStyle = "#a9121d";
+    ctx.strokeStyle = "#170e18";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-14, -31 + hairYOffset);
+    ctx.bezierCurveTo(-23, -18 + hairYOffset, -24, 5 + hairYOffset, -16, 18 + hairYOffset);
+    ctx.lineTo(-9, 10 + hairYOffset);
+    ctx.lineTo(-5, 22 + hairYOffset);
+    ctx.lineTo(0, 11 + hairYOffset);
+    ctx.lineTo(7, 21 + hairYOffset);
+    ctx.lineTo(10, 9 + hairYOffset);
+    ctx.lineTo(17, 17 + hairYOffset);
+    ctx.bezierCurveTo(24, 3 + hairYOffset, 22, -19 + hairYOffset, 14, -31 + hairYOffset);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
     ctx.restore();
   }

@@ -155,3 +155,24 @@ export function resolveCarveView(
     backAmount: Math.max(0, -turnBlend),
   };
 }
+
+export function resolveCarveBindingProjection(
+  boardRelativeTurn: number,
+  pivotY = 27.5,
+) {
+  const cosine = Math.cos(boardRelativeTurn);
+  const sine = Math.sin(boardRelativeTurn);
+  const halfScreenWidth = 4 + Math.abs(cosine) * 10;
+  const halfDepth = sine * cosine * 10;
+
+  return {
+    left: {
+      x: -halfScreenWidth,
+      y: pivotY - halfDepth,
+    },
+    right: {
+      x: halfScreenWidth,
+      y: pivotY + halfDepth,
+    },
+  };
+}

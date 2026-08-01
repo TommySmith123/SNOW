@@ -21,6 +21,7 @@ async function loadTurning() {
 const {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveCarveBindingProjection,
   resolveCarveView,
   resolveFaceBlend,
   resolveRiderBaseRotation,
@@ -191,4 +192,20 @@ test("fixed carve stance progresses from front through side to back", () => {
     sideAmount: 0,
     backAmount: 0,
   });
+});
+
+test("projected carve bindings remain ordered without crossing", () => {
+  const samples = [0, Math.PI / 4, Math.PI / 2, (Math.PI * 3) / 4, Math.PI]
+    .map((angle) => resolveCarveBindingProjection(angle));
+
+  for (const projection of samples) {
+    assert.ok(projection.left.x < projection.right.x);
+    assert.ok(projection.left.x >= -14 && projection.left.x <= -4);
+    assert.ok(projection.right.x >= 4 && projection.right.x <= 14);
+  }
+
+  assert.equal(samples[0].left.x, -14);
+  assert.ok(Math.abs(samples[2].left.x + 4) < 1e-9);
+  assert.equal(samples[4].right.x, 14);
+  assert.ok(Math.abs(samples[2].left.y - samples[2].right.y) < 1e-9);
 });
