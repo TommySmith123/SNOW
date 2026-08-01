@@ -162,32 +162,49 @@ export function resolveCarveBindingProjection(
   boardRelativeTurn: number,
   pivotY = 27.5,
 ) {
-  const sine = Math.abs(Math.sin(boardRelativeTurn));
-  const boardHalfWidth = 4.4;
-  const foreshortening = 1 - sine;
-  const halfScreenWidth =
-    boardHalfWidth + (14 - boardHalfWidth) * foreshortening * foreshortening;
+  const cosine = Math.cos(boardRelativeTurn);
+  const sine = Math.sin(boardRelativeTurn);
+  const bindingOffsetY = -1.5;
+
+  const rotateBinding = (longitudinalOffset: number) => ({
+    x: longitudinalOffset * cosine - bindingOffsetY * sine,
+    y:
+      pivotY +
+      longitudinalOffset * sine +
+      bindingOffsetY * cosine,
+  });
 
   return {
-    left: {
-      x: -halfScreenWidth,
-      y: pivotY,
-    },
-    right: {
-      x: halfScreenWidth,
-      y: pivotY,
-    },
+    // The board's local +X end is the fixed nose. The protagonist rides
+    // regular: anatomical left foot at the nose, right foot at the tail.
+    left: rotateBinding(14),
+    right: rotateBinding(-14),
   };
 }
 
 type BindingPoint = { x: number; y: number };
 
-export function resolveLegBindingTargets(
+export function resolveBodyLocalBindings(
   left: BindingPoint,
   right: BindingPoint,
-  bodyFlipped: boolean,
+  bodyRotation: number,
+  pivotY = 27.5,
 ) {
-  return bodyFlipped
-    ? { left: right, right: left }
-    : { left, right };
+  const inverseRotation = -bodyRotation;
+  const cosine = Math.cos(inverseRotation);
+  const sine = Math.sin(inverseRotation);
+  const intoBodySpace = (binding: BindingPoint) => {
+    const dy = binding.y - pivotY;
+    return {
+      x: binding.x * cosine - dy * sine,
+      y: pivotY + binding.x * sine + dy * cosine,
+    };
+  };
+
+  // Only change coordinate systems. Never exchange the anatomical feet:
+  // left remains on the nose binding and right remains on the tail binding.
+  return {
+    left: intoBodySpace(left),
+    right: intoBodySpace(right),
+  };
 }

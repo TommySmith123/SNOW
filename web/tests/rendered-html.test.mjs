@@ -142,10 +142,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /rotatePointAround/);
   assert.match(game, /Flip only the body/);
   assert.match(game, /const bodyFlip = brake \? Math\.PI : 0/);
-  assert.match(game, /resolveLegBindingTargets/);
-  assert.match(game, /bodyFlip !== 0/);
-  assert.match(game, /same-side projected binding/);
-  assert.match(game, /-bodyFlip/);
+  assert.match(game, /resolveBodyLocalBindings/);
+  assert.match(game, /must never exchange/);
+  assert.match(game, /leftHipX = usesProjectedStance/);
+  assert.match(game, /stanceScreenDirection/);
   assert.match(game, /ctx\.rotate\(bodyFlip\)/);
   assert.match(game, /function drawBrakeSparks/);
   assert.match(game, /model\.stance !== "brake"/);
@@ -171,7 +171,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /usesProjectedStance = ACTIVE_TURN_STYLE === "carve"/);
   assert.match(game, /projectedBindings\.left/);
   assert.match(game, /projectedBindings\.right/);
-  assert.match(game, /Binding markers share the projected foot coordinates/);
+  assert.match(game, /Binding markers share the fixed physical foot coordinates/);
   assert.match(game, /carveFrontAmount/);
   assert.match(game, /carveSideAmount/);
   assert.match(game, /carveBackAmount/);
@@ -200,10 +200,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /function resolveCarveView/);
   assert.match(turning, /bodyWidthScale: 1 - \(1 - Math\.abs\(turnBlend\)\) \* 0\.38/);
   assert.match(turning, /function resolveCarveBindingProjection/);
-  assert.match(turning, /boardHalfWidth = 4\.4/);
-  assert.match(turning, /foreshortening = 1 - sine/);
-  assert.match(turning, /\(14 - boardHalfWidth\) \* foreshortening \* foreshortening/);
-  assert.match(turning, /function resolveLegBindingTargets/);
+  assert.match(turning, /left: rotateBinding\(14\)/);
+  assert.match(turning, /right: rotateBinding\(-14\)/);
+  assert.match(turning, /function resolveBodyLocalBindings/);
+  assert.match(turning, /Never exchange the anatomical feet/);
   const trackSource = game.slice(
     game.indexOf("function drawTracks"),
     game.indexOf("function trailPosition"),

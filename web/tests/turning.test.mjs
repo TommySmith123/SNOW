@@ -20,11 +20,11 @@ async function loadTurning() {
 
 const {
   resolveBoardHeading,
+  resolveBodyLocalBindings,
   resolveBoundaryVelocity,
   resolveCarveBindingProjection,
   resolveCarveView,
   resolveFaceBlend,
-  resolveLegBindingTargets,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } = await loadTurning();
@@ -213,23 +213,15 @@ test("carve body width narrows continuously at the side-view apex", () => {
   );
 });
 
-test("projected carve bindings remain ordered without crossing", () => {
+test("carve bindings keep the left foot on the nose and right foot on the tail", () => {
   const samples = [0, Math.PI / 4, Math.PI / 2, (Math.PI * 3) / 4, Math.PI]
     .map((angle) => resolveCarveBindingProjection(angle));
 
-  for (const projection of samples) {
-    assert.ok(projection.left.x < projection.right.x);
-    assert.ok(projection.left.x >= -14 && projection.left.x <= -4);
-    assert.ok(projection.right.x >= 4 && projection.right.x <= 14);
-  }
-
-  assert.ok(Math.abs(samples[0].left.x + 14) < 1e-9);
-  assert.ok(Math.abs(samples[2].left.x + 4.4) < 1e-9);
+  assert.ok(Math.abs(samples[0].left.x - 14) < 1e-9);
+  assert.ok(Math.abs(samples[0].right.x + 14) < 1e-9);
+  assert.ok(samples[2].left.y > samples[2].right.y);
+  assert.ok(Math.abs(samples[4].left.x + 14) < 1e-9);
   assert.ok(Math.abs(samples[4].right.x - 14) < 1e-9);
-  for (const projection of samples) {
-    assert.equal(projection.left.y, 27.5);
-    assert.equal(projection.right.y, 27.5);
-  }
 
   const sweep = Array.from({ length: 33 }, (_, index) =>
     resolveCarveBindingProjection((Math.PI * index) / 32),
@@ -239,29 +231,52 @@ test("projected carve bindings remain ordered without crossing", () => {
     const sine = Math.sin(angle);
     const cosine = Math.cos(angle);
     const projection = sweep[index];
-    for (const binding of [projection.left, projection.right]) {
-      const normalDistance = Math.abs(
-        -sine * binding.x + cosine * (binding.y - 27.5),
-      );
-      assert.ok(normalDistance <= 4.41);
-    }
+    const leftLongitudinal =
+      cosine * projection.left.x + sine * (projection.left.y - 27.5);
+    const rightLongitudinal =
+      cosine * projection.right.x + sine * (projection.right.y - 27.5);
+    const leftTransverse =
+      -sine * projection.left.x + cosine * (projection.left.y - 27.5);
+    const rightTransverse =
+      -sine * projection.right.x + cosine * (projection.right.y - 27.5);
+
+    assert.ok(Math.abs(leftLongitudinal - 14) < 1e-9);
+    assert.ok(Math.abs(rightLongitudinal + 14) < 1e-9);
+    assert.ok(Math.abs(leftTransverse + 1.5) < 1e-9);
+    assert.ok(Math.abs(rightTransverse + 1.5) < 1e-9);
+    assert.ok(
+      Math.abs(
+        Math.hypot(
+          projection.left.x - projection.right.x,
+          projection.left.y - projection.right.y,
+        ) - 28,
+      ) < 1e-9,
+    );
     if (index > 0) {
       assert.ok(Math.abs(projection.left.x - sweep[index - 1].left.x) < 2.1);
-      assert.equal(projection.left.y, sweep[index - 1].left.y);
+      assert.ok(Math.abs(projection.left.y - sweep[index - 1].left.y) < 2.1);
     }
   }
 });
 
-test("brake body flip swaps internal targets to keep visible legs uncrossed", () => {
-  const left = { x: -8, y: 27.5 };
-  const right = { x: 8, y: 27.5 };
+test("brake body transform preserves anatomical binding identities", () => {
+  const bindings = resolveCarveBindingProjection(Math.PI / 3);
+  const bodyLocal = resolveBodyLocalBindings(
+    bindings.left,
+    bindings.right,
+    Math.PI,
+  );
+  const restoreToWorld = (point) => ({
+    x: -point.x,
+    y: 27.5 - (point.y - 27.5),
+  });
 
-  assert.deepEqual(resolveLegBindingTargets(left, right, false), {
-    left,
-    right,
-  });
-  assert.deepEqual(resolveLegBindingTargets(left, right, true), {
-    left: right,
-    right: left,
-  });
+  const restoredLeft = restoreToWorld(bodyLocal.left);
+  const restoredRight = restoreToWorld(bodyLocal.right);
+  assert.ok(Math.abs(restoredLeft.x - bindings.left.x) < 1e-9);
+  assert.ok(Math.abs(restoredLeft.y - bindings.left.y) < 1e-9);
+  assert.ok(Math.abs(restoredRight.x - bindings.right.x) < 1e-9);
+  assert.ok(Math.abs(restoredRight.y - bindings.right.y) < 1e-9);
+  assert.notDeepEqual(restoredLeft, bindings.right);
+  assert.notDeepEqual(restoredRight, bindings.left);
 });

@@ -45,9 +45,9 @@ import {
 import {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveBodyLocalBindings,
   resolveCarveBindingProjection,
   resolveCarveView,
-  resolveLegBindingTargets,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } from "./turning";
@@ -829,50 +829,49 @@ function drawBoarder(
     ? projectedBindings.right
     : physicalRightBinding;
   const bodyFlip = brake ? Math.PI : 0;
-  // A 180-degree body flip swaps the visible hips. Swap the internal leg
-  // targets before applying that transform so each hip still reaches the
-  // same-side projected binding instead of drawing an X across the board.
-  const legBindingTargets = resolveLegBindingTargets(
+  // Convert the fixed physical bindings into the body's temporary coordinate
+  // system. A brake rotation changes coordinates only: it must never exchange
+  // the anatomical left/front and right/rear feet.
+  const bodyLocalBindings = resolveBodyLocalBindings(
     leftBinding,
     rightBinding,
-    bodyFlip !== 0,
-  );
-  const leftBodyBinding = rotatePointAround(
-    legBindingTargets.left.x,
-    legBindingTargets.left.y,
-    0,
+    bodyFlip,
     boardPivotY,
-    -bodyFlip,
-  );
-  const rightBodyBinding = rotatePointAround(
-    legBindingTargets.right.x,
-    legBindingTargets.right.y,
-    0,
-    boardPivotY,
-    -bodyFlip,
   );
   const leftFoot = {
-    x: leftBodyBinding.x,
-    y: leftBodyBinding.y - crouch,
+    x: bodyLocalBindings.left.x,
+    y: bodyLocalBindings.left.y - crouch,
   };
   const rightFoot = {
-    x: rightBodyBinding.x,
-    y: rightBodyBinding.y - crouch,
+    x: bodyLocalBindings.right.x,
+    y: bodyLocalBindings.right.y - crouch,
   };
+  const hipY = tuck ? 2 : 5;
+  // Anatomical hips follow the same directed stance as their fixed feet.
+  // At the side-view apex they overlap naturally in depth; after the apex
+  // they change screen sides together instead of stretching into an X.
+  const leftHipX = usesProjectedStance ? leftFoot.x * 0.54 : -8;
+  const rightHipX = usesProjectedStance ? rightFoot.x * 0.54 : 7;
+  const stanceScreenDirection = Math.sign(leftFoot.x - rightFoot.x) || 1;
+  const kneeOut = brake ? 3.5 : 2;
   const legs = [
     {
-      hip: { x: -8, y: tuck ? 2 : 5 },
+      hip: { x: leftHipX, y: hipY },
       knee: {
-        x: (-8 + leftFoot.x) / 2 - (brake ? model.edge * 5 : 2),
-        y: (tuck ? 2 : 5) + (leftFoot.y - (tuck ? 2 : 5)) * 0.52,
+        x:
+          (leftHipX + leftFoot.x) / 2 +
+          stanceScreenDirection * kneeOut,
+        y: hipY + (leftFoot.y - hipY) * 0.52,
       },
       foot: leftFoot,
     },
     {
-      hip: { x: 7, y: tuck ? 2 : 5 },
+      hip: { x: rightHipX, y: hipY },
       knee: {
-        x: (7 + rightFoot.x) / 2 + (brake ? model.edge * 5 : 2),
-        y: (tuck ? 2 : 5) + (rightFoot.y - (tuck ? 2 : 5)) * 0.52,
+        x:
+          (rightHipX + rightFoot.x) / 2 -
+          stanceScreenDirection * kneeOut,
+        y: hipY + (rightFoot.y - hipY) * 0.52,
       },
       foot: rightFoot,
     },
@@ -947,9 +946,9 @@ function drawBoarder(
 
   ctx.restore();
 
-  // Binding markers share the projected foot coordinates. Their screen order
-  // stays left/right while depth compresses around the carve apex, preventing
-  // the legs from crossing when the directed board passes ninety degrees.
+  // Binding markers share the fixed physical foot coordinates. The left marker
+  // stays on the board nose and the right marker stays on the tail, even when
+  // their screen-left/screen-right order changes through a directed carve.
   ctx.strokeStyle = "#1c252d";
   ctx.lineWidth = 3;
   for (const binding of [leftBinding, rightBinding]) {
