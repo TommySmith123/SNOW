@@ -45,7 +45,7 @@ import {
 import {
   resolveBoardHeading,
   resolveBoundaryVelocity,
-  resolveFaceBlend,
+  resolveCarveView,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } from "./turning";
@@ -782,13 +782,15 @@ function drawBoarder(
   const boardPivotY = 27.5;
   const carving =
     ACTIVE_TURN_STYLE === "carve" && !brake && model.status !== "CRASHED";
-  const carveFaceBlend = carving
-    ? resolveFaceBlend(
-        ACTIVE_TURN_STYLE,
-        model.lateralVelocity,
-        model.edge,
-      )
-    : 0;
+  const carveView = resolveCarveView(
+    ACTIVE_TURN_STYLE,
+    model.lateralVelocity,
+    model.edge,
+  );
+  const carveFaceBlend = carving ? carveView.turnBlend : 0;
+  const carveFrontAmount = carving ? carveView.frontAmount : 1;
+  const carveSideAmount = carving ? carveView.sideAmount : 0;
+  const carveBackAmount = carving ? carveView.backAmount : 0;
   const leftBinding = rotatePointAround(
     -14,
     26,
@@ -803,8 +805,29 @@ function drawBoarder(
     boardPivotY,
     boardRelativeTurn,
   );
-  const leftFoot = { x: leftBinding.x, y: leftBinding.y - crouch };
-  const rightFoot = { x: rightBinding.x, y: rightBinding.y - crouch };
+  const bodyFlip = brake ? Math.PI : 0;
+  const leftBodyBinding = rotatePointAround(
+    leftBinding.x,
+    leftBinding.y,
+    0,
+    boardPivotY,
+    -bodyFlip,
+  );
+  const rightBodyBinding = rotatePointAround(
+    rightBinding.x,
+    rightBinding.y,
+    0,
+    boardPivotY,
+    -bodyFlip,
+  );
+  const leftFoot = {
+    x: leftBodyBinding.x,
+    y: leftBodyBinding.y - crouch,
+  };
+  const rightFoot = {
+    x: rightBodyBinding.x,
+    y: rightBodyBinding.y - crouch,
+  };
   const legs = [
     {
       hip: { x: -8, y: tuck ? 2 : 5 },
@@ -866,6 +889,41 @@ function drawBoarder(
     ctx.restore();
   }
 
+  // Sparks sit under the board, while the board and bindings sit under the
+  // rider. Drawing these layers before the legs keeps both feet visibly planted
+  // on top of their binding points through the full directed carve rotation.
+  ctx.save();
+  ctx.translate(0, boardPivotY);
+  ctx.rotate(boardRelativeTurn);
+  ctx.translate(0, -boardPivotY);
+  drawBrakeSparks(ctx, model);
+  ctx.restore();
+
+  // A conventional snowboard with a pattern shared by its shop preview.
+  ctx.save();
+  ctx.translate(0, boardPivotY);
+  ctx.rotate(boardRelativeTurn);
+  ctx.translate(0, -boardPivotY);
+  ctx.strokeStyle = "#071b2b";
+  ctx.fillStyle = boardStyle.color;
+  ctx.lineWidth = 4;
+  snowboardPath(ctx, brake);
+  ctx.fill();
+  ctx.stroke();
+
+  drawSnowboardPattern(ctx, boardStyle, brake);
+  drawCarveNoseMarker(ctx, boardStyle, brake);
+
+  ctx.strokeStyle = "#1c252d";
+  ctx.lineWidth = 3;
+  for (const bindingX of [-14, 14]) {
+    ctx.beginPath();
+    ctx.moveTo(bindingX - 4, 23);
+    ctx.lineTo(bindingX + 4, 29);
+    ctx.stroke();
+  }
+  ctx.restore();
+
   // The snowboard stays pinned to the snow while only the rider's body
   // changes height for tuck/brake poses. This keeps the board contact point
   // and its sampled tracks continuous across stance changes.
@@ -874,7 +932,7 @@ function drawBoarder(
   // around the binding centre; the snowboard keeps its 90-degree brake angle.
   if (brake) {
     ctx.translate(0, boardPivotY);
-    ctx.rotate(Math.PI);
+    ctx.rotate(bodyFlip);
     ctx.translate(0, -boardPivotY);
   }
   ctx.translate(0, crouch);
@@ -900,7 +958,8 @@ function drawBoarder(
   ctx.stroke();
 
   // Broad, outlined snow pants stay readable after the mobile canvas scales
-  // down, and their feet remain attached inside the whole-rider brake frame.
+  // down. Both identical-width legs are drawn after the snowboard, so neither
+  // carve direction can hide a leg or place its rounded foot behind the board.
   ctx.fillStyle = pantsStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 3;
@@ -941,15 +1000,41 @@ function drawBoarder(
   ctx.fill();
   ctx.stroke();
 
+  ctx.save();
+  ctx.globalAlpha = carving
+    ? carveFrontAmount + carveSideAmount * 0.18
+    : 1;
   drawJacketDecoration(ctx, jacketStyle, tuck);
+  ctx.restore();
 
-  // Face, large black eyes and freckles. In carving mode the near eye grows
-  // while the far eye recedes, giving the existing character a side profile.
+  if (carving && carveBackAmount + carveSideAmount > 0) {
+    ctx.save();
+    ctx.globalAlpha = carveBackAmount + carveSideAmount * 0.28;
+    ctx.strokeStyle = jacketStyle.accent ?? "#748394";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, tuck ? -14 : -18);
+    ctx.lineTo(0, tuck ? 5 : 9);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // A fixed snowboard stance turns from a front three-quarter view, through a
+  // side profile, into a back three-quarter view. The face therefore recedes
+  // instead of mirroring into a second front-facing side when the board turns.
+  const faceReveal = carving
+    ? carveFrontAmount + carveSideAmount
+    : 1;
+  const frontDetailReveal = carving
+    ? carveFrontAmount + carveSideAmount * 0.45
+    : 1;
   const faceCenterX = carving
-    ? carveFaceBlend * 4.5
+    ? carveFrontAmount * 1.5 + carveSideAmount * 5
     : tuck
       ? model.edge * 4
       : 0;
+  ctx.save();
+  ctx.globalAlpha = faceReveal;
   ctx.fillStyle = "#ffd8ca";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
@@ -957,7 +1042,7 @@ function drawBoarder(
   ctx.ellipse(
     faceCenterX,
     tuck ? -23 : -33,
-    carving ? 12 - Math.abs(carveFaceBlend) : 12,
+    carving ? 8 + carveFrontAmount * 4 : 12,
     11,
     0,
     0,
@@ -968,13 +1053,17 @@ function drawBoarder(
 
   ctx.fillStyle = "#07090e";
   for (const side of [-1, 1]) {
-    const farAmount = carving
-      ? Math.max(0, -side * carveFaceBlend)
+    const farAmount = carving && side < 0
+      ? carveSideAmount * 0.82
       : 0;
+    ctx.save();
+    ctx.globalAlpha = side < 0 && carving
+      ? carveFrontAmount + carveSideAmount * 0.18
+      : 1;
     ctx.beginPath();
     ctx.ellipse(
       faceCenterX +
-        side * (4.5 - Math.abs(carveFaceBlend) * 0.9),
+        side * (3.6 + carveFrontAmount * 0.9),
       tuck ? -25 : -35,
       3.3 - farAmount * 1.2,
       4.3 - farAmount * 0.9,
@@ -983,7 +1072,9 @@ function drawBoarder(
       Math.PI * 2,
     );
     ctx.fill();
+    ctx.restore();
   }
+  ctx.globalAlpha = frontDetailReveal;
   ctx.strokeStyle = "#a9121d";
   ctx.lineWidth = 1.4;
   ctx.beginPath();
@@ -1000,8 +1091,13 @@ function drawBoarder(
       ctx.fill();
     }
   }
+  ctx.restore();
 
   // White wing-like ear accents.
+  ctx.save();
+  ctx.globalAlpha = carving
+    ? carveFrontAmount + carveSideAmount * 0.45 + carveBackAmount * 0.3
+    : 1;
   ctx.fillStyle = "#f7fbff";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 2;
@@ -1016,19 +1112,33 @@ function drawBoarder(
     ctx.fill();
     ctx.stroke();
   }
+  ctx.restore();
 
   // Black beanie and oversized dotted snow goggles.
   drawHatShape(
     ctx,
     hatStyle,
     carving
-      ? carveFaceBlend * 2.5
+      ? carveFrontAmount * 1.2 + carveSideAmount * 3.2 - carveBackAmount * 1.2
       : tuck
         ? model.edge * 4
         : 0,
     tuck ? -31 : -41,
   );
 
+  if (carving && carveBackAmount + carveSideAmount > 0) {
+    ctx.save();
+    ctx.globalAlpha = carveBackAmount + carveSideAmount * 0.5;
+    ctx.fillStyle = gogglesStyle.accent ?? "#91a9df";
+    roundedRect(ctx, -12, tuck ? -42 : -52, 24, 5, 2.5);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.globalAlpha = carving
+    ? carveFrontAmount + carveSideAmount * 0.5
+    : 1;
   ctx.fillStyle = gogglesStyle.color;
   ctx.beginPath();
   roundedRect(ctx, -12, tuck ? -42 : -52, 24, 10, 4);
@@ -1042,39 +1152,6 @@ function drawBoarder(
   }
   ctx.restore();
   ctx.restore();
-
-  // Draw first so the snowboard masks each spark root. Only the short section
-  // below the lower steel edge remains visible against the snow.
-  ctx.save();
-  ctx.translate(0, boardPivotY);
-  ctx.rotate(boardRelativeTurn);
-  ctx.translate(0, -boardPivotY);
-  drawBrakeSparks(ctx, model);
-  ctx.restore();
-
-  // A conventional snowboard with a pattern shared by its shop preview.
-  ctx.save();
-  ctx.translate(0, boardPivotY);
-  ctx.rotate(boardRelativeTurn);
-  ctx.translate(0, -boardPivotY);
-  ctx.strokeStyle = "#071b2b";
-  ctx.fillStyle = boardStyle.color;
-  ctx.lineWidth = 4;
-  snowboardPath(ctx, brake);
-  ctx.fill();
-  ctx.stroke();
-
-  drawSnowboardPattern(ctx, boardStyle, brake);
-  drawCarveNoseMarker(ctx, boardStyle, brake);
-
-  ctx.strokeStyle = "#1c252d";
-  ctx.lineWidth = 3;
-  for (const bindingX of [-14, 14]) {
-    ctx.beginPath();
-    ctx.moveTo(bindingX - 4, 23);
-    ctx.lineTo(bindingX + 4, 29);
-    ctx.stroke();
-  }
   ctx.restore();
 
   ctx.restore();

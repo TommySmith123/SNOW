@@ -21,6 +21,7 @@ async function loadTurning() {
 const {
   resolveBoardHeading,
   resolveBoundaryVelocity,
+  resolveCarveView,
   resolveFaceBlend,
   resolveRiderBaseRotation,
   resolveTurnMotion,
@@ -163,4 +164,31 @@ test("carve face blend moves continuously through a centered face", () => {
   assert.equal(resolveFaceBlend("carve", -36, -1), -0.5);
   assert.equal(resolveFaceBlend("carve", -72, -1), -1);
   assert.equal(resolveFaceBlend("falling-leaf", 0, -1), -1);
+});
+
+test("fixed carve stance progresses from front through side to back", () => {
+  assert.deepEqual(resolveCarveView("carve", 72, 1), {
+    turnBlend: 1,
+    frontAmount: 1,
+    sideAmount: 0,
+    backAmount: 0,
+  });
+  assert.deepEqual(resolveCarveView("carve", 0, -1), {
+    turnBlend: 0,
+    frontAmount: 0,
+    sideAmount: 1,
+    backAmount: 0,
+  });
+  assert.deepEqual(resolveCarveView("carve", -72, -1), {
+    turnBlend: -1,
+    frontAmount: 0,
+    sideAmount: 0,
+    backAmount: 1,
+  });
+  assert.deepEqual(resolveCarveView("falling-leaf", 0, -1), {
+    turnBlend: -1,
+    frontAmount: 1,
+    sideAmount: 0,
+    backAmount: 0,
+  });
 });

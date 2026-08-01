@@ -132,3 +132,26 @@ export function resolveFaceBlend(
     ? clamp(lateralVelocity / 72, -1, 1)
     : edge;
 }
+
+export function resolveCarveView(
+  style: TurnStyle,
+  lateralVelocity: number,
+  edge: -1 | 1,
+) {
+  const turnBlend = resolveFaceBlend(style, lateralVelocity, edge);
+  if (style !== "carve") {
+    return {
+      turnBlend,
+      frontAmount: 1,
+      sideAmount: 0,
+      backAmount: 0,
+    };
+  }
+
+  return {
+    turnBlend,
+    frontAmount: Math.max(0, turnBlend),
+    sideAmount: 1 - Math.abs(turnBlend),
+    backAmount: Math.max(0, -turnBlend),
+  };
+}

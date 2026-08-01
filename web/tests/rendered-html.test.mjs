@@ -141,26 +141,38 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /Rotate the complete rider around the board pivot/);
   assert.match(game, /rotatePointAround/);
   assert.match(game, /Flip only the body/);
-  assert.match(game, /ctx\.rotate\(Math\.PI\)/);
+  assert.match(game, /const bodyFlip = brake \? Math\.PI : 0/);
+  assert.match(game, /-bodyFlip/);
+  assert.match(game, /ctx\.rotate\(bodyFlip\)/);
   assert.match(game, /function drawBrakeSparks/);
   assert.match(game, /model\.stance !== "brake"/);
   assert.match(game, /sparkCount = 3 \+ Math\.floor\(speedIntensity \* 3\)/);
   assert.doesNotMatch(game, /globalCompositeOperation = "lighter"/);
   assert.match(game, /#d96b32/);
   assert.match(game, /#ffe5a1/);
-  assert.match(game, /Draw first so the snowboard masks each spark root/);
+  assert.match(game, /Sparks sit under the board/);
   assert.ok(
     game.indexOf("drawBrakeSparks(ctx, model);") <
       game.indexOf("// A conventional snowboard"),
+  );
+  assert.ok(
+    game.indexOf("// A conventional snowboard") <
+      game.indexOf("// Broad, outlined snow pants"),
   );
   assert.match(game, /resolveTurnMotion/);
   assert.match(game, /resolveBoundaryVelocity/);
   assert.match(game, /resolveRiderBaseRotation/);
   assert.match(game, /carveFaceBlend/);
-  assert.match(game, /resolveFaceBlend/);
+  assert.match(game, /resolveCarveView/);
+  assert.match(game, /carveFrontAmount/);
+  assert.match(game, /carveSideAmount/);
+  assert.match(game, /carveBackAmount/);
+  assert.match(game, /front three-quarter view/);
+  assert.match(game, /faceReveal/);
+  assert.match(game, /frontDetailReveal/);
   assert.match(game, /farAmount/);
   assert.match(game, /tuckSide = carving \? carveFaceBlend : model\.edge/);
-  assert.match(game, /near eye grows/);
+  assert.match(game, /face therefore recedes/);
   assert.match(turning, /style === "carve"/);
   assert.match(turning, /fallingLeafAcceleration/);
   assert.match(turning, /Math\.max\(76, Math\.min\(132/);
@@ -169,6 +181,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /Math\.atan2\(projectedDownhill, input\.lateralVelocity\)/);
   assert.match(turning, /stationaryEdge/);
   assert.match(turning, /lateralVelocity \/ 72/);
+  assert.match(turning, /function resolveCarveView/);
   const trackSource = game.slice(
     game.indexOf("function drawTracks"),
     game.indexOf("function trailPosition"),
@@ -178,7 +191,7 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.doesNotMatch(game, /brake \? model\.edge \* 0\.12/);
   assert.match(game, /ctx\.lineWidth = 15/);
   assert.match(game, /ctx\.lineWidth = 11/);
-  assert.match(game, /Broad, outlined snow pants/);
+  assert.match(game, /Both identical-width legs are drawn after the snowboard/);
   assert.match(game, /startMusic/);
   assert.match(game, /createDynamicsCompressor/);
   assert.match(game, /const beat = 60 \/ 92 \/ 2/);
