@@ -173,25 +173,43 @@ test("fixed carve stance progresses from front through side to back", () => {
     frontAmount: 1,
     sideAmount: 0,
     backAmount: 0,
+    bodyWidthScale: 1,
   });
   assert.deepEqual(resolveCarveView("carve", 0, -1), {
     turnBlend: 0,
     frontAmount: 0,
     sideAmount: 1,
     backAmount: 0,
+    bodyWidthScale: 0.62,
   });
   assert.deepEqual(resolveCarveView("carve", -72, -1), {
     turnBlend: -1,
     frontAmount: 0,
     sideAmount: 0,
     backAmount: 1,
+    bodyWidthScale: 1,
   });
   assert.deepEqual(resolveCarveView("falling-leaf", 0, -1), {
     turnBlend: -1,
     frontAmount: 1,
     sideAmount: 0,
     backAmount: 0,
+    bodyWidthScale: 1,
   });
+});
+
+test("carve body width narrows continuously at the side-view apex", () => {
+  const views = [72, 54, 36, 18, 0, -18, -36, -54, -72]
+    .map((velocity) => resolveCarveView("carve", velocity, velocity < 0 ? -1 : 1));
+
+  for (const view of views) {
+    assert.ok(Math.abs(view.frontAmount + view.sideAmount + view.backAmount - 1) < 1e-9);
+    assert.ok(view.bodyWidthScale >= 0.62 && view.bodyWidthScale <= 1);
+  }
+  assert.deepEqual(
+    views.map((view) => view.bodyWidthScale),
+    [1, 0.905, 0.81, 0.715, 0.62, 0.715, 0.81, 0.905, 1],
+  );
 });
 
 test("projected carve bindings remain ordered without crossing", () => {
@@ -208,4 +226,24 @@ test("projected carve bindings remain ordered without crossing", () => {
   assert.ok(Math.abs(samples[2].left.x + 4) < 1e-9);
   assert.equal(samples[4].right.x, 14);
   assert.ok(Math.abs(samples[2].left.y - samples[2].right.y) < 1e-9);
+
+  const sweep = Array.from({ length: 33 }, (_, index) =>
+    resolveCarveBindingProjection((Math.PI * index) / 32),
+  );
+  for (let index = 0; index < sweep.length; index++) {
+    const angle = (Math.PI * index) / 32;
+    const sine = Math.sin(angle);
+    const cosine = Math.cos(angle);
+    const projection = sweep[index];
+    for (const binding of [projection.left, projection.right]) {
+      const normalDistance = Math.abs(
+        -sine * binding.x + cosine * (binding.y - 27.5),
+      );
+      assert.ok(normalDistance <= 5.51);
+    }
+    if (index > 0) {
+      assert.ok(Math.abs(projection.left.x - sweep[index - 1].left.x) < 1.1);
+      assert.ok(Math.abs(projection.left.y - sweep[index - 1].left.y) < 1.1);
+    }
+  }
 });

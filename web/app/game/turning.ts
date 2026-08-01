@@ -145,6 +145,7 @@ export function resolveCarveView(
       frontAmount: 1,
       sideAmount: 0,
       backAmount: 0,
+      bodyWidthScale: 1,
     };
   }
 
@@ -153,6 +154,7 @@ export function resolveCarveView(
     frontAmount: Math.max(0, turnBlend),
     sideAmount: 1 - Math.abs(turnBlend),
     backAmount: Math.max(0, -turnBlend),
+    bodyWidthScale: 1 - (1 - Math.abs(turnBlend)) * 0.38,
   };
 }
 
@@ -162,7 +164,7 @@ export function resolveCarveBindingProjection(
 ) {
   const cosine = Math.cos(boardRelativeTurn);
   const sine = Math.sin(boardRelativeTurn);
-  const halfScreenWidth = 4 + Math.abs(cosine) * 10;
+  const halfScreenWidth = 4 + cosine * cosine * 10;
   const halfDepth = sine * cosine * 10;
 
   return {

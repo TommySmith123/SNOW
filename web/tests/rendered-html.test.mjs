@@ -171,6 +171,12 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /carveFrontAmount/);
   assert.match(game, /carveSideAmount/);
   assert.match(game, /carveBackAmount/);
+  assert.match(game, /bodyWidthScale/);
+  assert.match(game, /whole upper silhouette narrows at the side-view apex/);
+  assert.match(game, /ctx\.scale\(bodyWidthScale, 1\)/);
+  assert.match(game, /A crash rotates the already assembled carve pose/);
+  assert.match(game, /const carving = ACTIVE_TURN_STYLE === "carve" && !brake/);
+  assert.match(game, /model\.status !== "CRASHED"/);
   assert.match(game, /front three-quarter view/);
   assert.match(game, /faceReveal/);
   assert.match(game, /frontDetailReveal/);
@@ -188,8 +194,9 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /stationaryEdge/);
   assert.match(turning, /lateralVelocity \/ 72/);
   assert.match(turning, /function resolveCarveView/);
+  assert.match(turning, /bodyWidthScale: 1 - \(1 - Math\.abs\(turnBlend\)\) \* 0\.38/);
   assert.match(turning, /function resolveCarveBindingProjection/);
-  assert.match(turning, /halfScreenWidth = 4 \+ Math\.abs\(cosine\) \* 10/);
+  assert.match(turning, /halfScreenWidth = 4 \+ cosine \* cosine \* 10/);
   assert.match(turning, /halfDepth = sine \* cosine \* 10/);
   const trackSource = game.slice(
     game.indexOf("function drawTracks"),

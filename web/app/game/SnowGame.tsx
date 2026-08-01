@@ -132,7 +132,9 @@ function riderRotation(model: GameModel) {
 }
 
 function boardTurn(model: GameModel) {
-  return model.stance === "brake" && !isAirborne(model)
+  return model.stance === "brake" &&
+    !isAirborne(model) &&
+    model.status !== "CRASHED"
     ? model.edge * (Math.PI / 2)
     : 0;
 }
@@ -775,14 +777,21 @@ function drawBoarder(
   const gogglesStyle = getShopItem(profile.equipped.goggles);
   const hatStyle = getShopItem(profile.equipped.hat);
   const y = GAME.playerY - air;
-  const tuck = model.stance === "tuck" && !isAirborne(model);
-  const brake = model.stance === "brake" && !isAirborne(model);
+  const tuck =
+    model.stance === "tuck" &&
+    !isAirborne(model) &&
+    model.status !== "CRASHED";
+  const brake =
+    model.stance === "brake" &&
+    !isAirborne(model) &&
+    model.status !== "CRASHED";
   const crouch = tuck ? 12 : brake ? 5 : 0;
   const riderFrameRotation = riderRotation(model);
   const boardRelativeTurn = boardRotation(model) - riderFrameRotation;
   const boardPivotY = 27.5;
-  const carving =
-    ACTIVE_TURN_STYLE === "carve" && !brake && model.status !== "CRASHED";
+  // A crash rotates the already assembled carve pose. It must not switch back
+  // to physical left/right bindings or a front-facing body on impact.
+  const carving = ACTIVE_TURN_STYLE === "carve" && !brake;
   const carveView = resolveCarveView(
     ACTIVE_TURN_STYLE,
     model.lateralVelocity,
@@ -792,6 +801,7 @@ function drawBoarder(
   const carveFrontAmount = carving ? carveView.frontAmount : 1;
   const carveSideAmount = carving ? carveView.sideAmount : 0;
   const carveBackAmount = carving ? carveView.backAmount : 0;
+  const bodyWidthScale = carving ? carveView.bodyWidthScale : 1;
   const physicalLeftBinding = rotatePointAround(
     -14,
     26,
@@ -957,6 +967,8 @@ function drawBoarder(
   ctx.translate(0, crouch);
 
   // Deep red hair silhouette from the supplied protagonist reference.
+  ctx.save();
+  ctx.scale(bodyWidthScale, 1);
   ctx.fillStyle = "#a9121d";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
@@ -975,6 +987,7 @@ function drawBoarder(
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
 
   // Broad, outlined snow pants stay readable after the mobile canvas scales
   // down. Both identical-width legs are drawn after the snowboard, so neither
@@ -982,9 +995,12 @@ function drawBoarder(
   ctx.fillStyle = pantsStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 3;
+  ctx.save();
+  ctx.scale(bodyWidthScale, 1);
   roundedRect(ctx, -12, tuck ? -1 : 1, 24, 13, 5);
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "#080a0d";
@@ -1012,6 +1028,9 @@ function drawBoarder(
   const tuckSide = carving ? carveFaceBlend : model.edge;
   ctx.translate(tuck ? tuckSide * 6 : 0, tuck ? 5 : 0);
   ctx.rotate(tuck ? -tuckSide * 0.24 : 0);
+  // The whole upper silhouette narrows at the side-view apex and expands again
+  // toward the back; this makes the turn volumetric instead of an alpha fade.
+  ctx.scale(bodyWidthScale, 1);
   ctx.fillStyle = jacketStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
@@ -1087,7 +1106,7 @@ function drawBoarder(
   ctx.ellipse(
     faceCenterX,
     tuck ? -23 : -33,
-    carving ? 8 + carveFrontAmount * 4 : 12,
+    12,
     11,
     0,
     0,
