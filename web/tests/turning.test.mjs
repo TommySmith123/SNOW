@@ -24,6 +24,7 @@ const {
   resolveCarveBindingProjection,
   resolveCarveView,
   resolveFaceBlend,
+  resolveLegBindingTargets,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } = await loadTurning();
@@ -222,10 +223,13 @@ test("projected carve bindings remain ordered without crossing", () => {
     assert.ok(projection.right.x >= 4 && projection.right.x <= 14);
   }
 
-  assert.equal(samples[0].left.x, -14);
-  assert.ok(Math.abs(samples[2].left.x + 4) < 1e-9);
-  assert.equal(samples[4].right.x, 14);
-  assert.ok(Math.abs(samples[2].left.y - samples[2].right.y) < 1e-9);
+  assert.ok(Math.abs(samples[0].left.x + 14) < 1e-9);
+  assert.ok(Math.abs(samples[2].left.x + 4.4) < 1e-9);
+  assert.ok(Math.abs(samples[4].right.x - 14) < 1e-9);
+  for (const projection of samples) {
+    assert.equal(projection.left.y, 27.5);
+    assert.equal(projection.right.y, 27.5);
+  }
 
   const sweep = Array.from({ length: 33 }, (_, index) =>
     resolveCarveBindingProjection((Math.PI * index) / 32),
@@ -239,11 +243,25 @@ test("projected carve bindings remain ordered without crossing", () => {
       const normalDistance = Math.abs(
         -sine * binding.x + cosine * (binding.y - 27.5),
       );
-      assert.ok(normalDistance <= 5.51);
+      assert.ok(normalDistance <= 4.41);
     }
     if (index > 0) {
-      assert.ok(Math.abs(projection.left.x - sweep[index - 1].left.x) < 1.1);
-      assert.ok(Math.abs(projection.left.y - sweep[index - 1].left.y) < 1.1);
+      assert.ok(Math.abs(projection.left.x - sweep[index - 1].left.x) < 2.1);
+      assert.equal(projection.left.y, sweep[index - 1].left.y);
     }
   }
+});
+
+test("brake body flip swaps internal targets to keep visible legs uncrossed", () => {
+  const left = { x: -8, y: 27.5 };
+  const right = { x: 8, y: 27.5 };
+
+  assert.deepEqual(resolveLegBindingTargets(left, right, false), {
+    left,
+    right,
+  });
+  assert.deepEqual(resolveLegBindingTargets(left, right, true), {
+    left: right,
+    right: left,
+  });
 });

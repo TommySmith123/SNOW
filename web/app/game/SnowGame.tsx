@@ -47,6 +47,7 @@ import {
   resolveBoundaryVelocity,
   resolveCarveBindingProjection,
   resolveCarveView,
+  resolveLegBindingTargets,
   resolveRiderBaseRotation,
   resolveTurnMotion,
 } from "./turning";
@@ -820,23 +821,32 @@ function drawBoarder(
     boardRelativeTurn,
     boardPivotY,
   );
-  const leftBinding = carving
+  const usesProjectedStance = ACTIVE_TURN_STYLE === "carve";
+  const leftBinding = usesProjectedStance
     ? projectedBindings.left
     : physicalLeftBinding;
-  const rightBinding = carving
+  const rightBinding = usesProjectedStance
     ? projectedBindings.right
     : physicalRightBinding;
   const bodyFlip = brake ? Math.PI : 0;
+  // A 180-degree body flip swaps the visible hips. Swap the internal leg
+  // targets before applying that transform so each hip still reaches the
+  // same-side projected binding instead of drawing an X across the board.
+  const legBindingTargets = resolveLegBindingTargets(
+    leftBinding,
+    rightBinding,
+    bodyFlip !== 0,
+  );
   const leftBodyBinding = rotatePointAround(
-    leftBinding.x,
-    leftBinding.y,
+    legBindingTargets.left.x,
+    legBindingTargets.left.y,
     0,
     boardPivotY,
     -bodyFlip,
   );
   const rightBodyBinding = rotatePointAround(
-    rightBinding.x,
-    rightBinding.y,
+    legBindingTargets.right.x,
+    legBindingTargets.right.y,
     0,
     boardPivotY,
     -bodyFlip,

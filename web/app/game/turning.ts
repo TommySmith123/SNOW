@@ -162,19 +162,32 @@ export function resolveCarveBindingProjection(
   boardRelativeTurn: number,
   pivotY = 27.5,
 ) {
-  const cosine = Math.cos(boardRelativeTurn);
-  const sine = Math.sin(boardRelativeTurn);
-  const halfScreenWidth = 4 + cosine * cosine * 10;
-  const halfDepth = sine * cosine * 10;
+  const sine = Math.abs(Math.sin(boardRelativeTurn));
+  const boardHalfWidth = 4.4;
+  const foreshortening = 1 - sine;
+  const halfScreenWidth =
+    boardHalfWidth + (14 - boardHalfWidth) * foreshortening * foreshortening;
 
   return {
     left: {
       x: -halfScreenWidth,
-      y: pivotY - halfDepth,
+      y: pivotY,
     },
     right: {
       x: halfScreenWidth,
-      y: pivotY + halfDepth,
+      y: pivotY,
     },
   };
+}
+
+type BindingPoint = { x: number; y: number };
+
+export function resolveLegBindingTargets(
+  left: BindingPoint,
+  right: BindingPoint,
+  bodyFlipped: boolean,
+) {
+  return bodyFlipped
+    ? { left: right, right: left }
+    : { left, right };
 }
