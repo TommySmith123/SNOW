@@ -23,6 +23,7 @@ const {
   resolveBodyLocalBindings,
   resolveBoundaryVelocity,
   resolveCarveBindingProjection,
+  resolveCarveUpperBodyProjection,
   resolveCarveView,
   resolveFaceBlend,
   resolveRiderBaseRotation,
@@ -171,46 +172,118 @@ test("carve face blend moves continuously through a centered face", () => {
 test("fixed carve stance progresses from front through side to back", () => {
   assert.deepEqual(resolveCarveView("carve", 72, 1), {
     turnBlend: 1,
+    bodyYaw: 0,
+    facingCosine: 1,
     frontAmount: 1,
     sideAmount: 0,
     backAmount: 0,
     bodyWidthScale: 1,
+    headWidthScale: 1,
+    torsoOffsetX: 0,
+    depthShear: 0,
   });
   assert.deepEqual(resolveCarveView("carve", 0, -1), {
     turnBlend: 0,
+    bodyYaw: Math.PI / 2,
+    facingCosine: 0,
     frontAmount: 0,
     sideAmount: 1,
     backAmount: 0,
     bodyWidthScale: 0.62,
+    headWidthScale: 0.7,
+    torsoOffsetX: 2.8,
+    depthShear: 0.18,
   });
   assert.deepEqual(resolveCarveView("carve", -72, -1), {
     turnBlend: -1,
+    bodyYaw: Math.PI,
+    facingCosine: -1,
     frontAmount: 0,
     sideAmount: 0,
     backAmount: 1,
     bodyWidthScale: 1,
+    headWidthScale: 1,
+    torsoOffsetX: 0,
+    depthShear: 0,
   });
   assert.deepEqual(resolveCarveView("falling-leaf", 0, -1), {
     turnBlend: -1,
+    bodyYaw: 0,
+    facingCosine: 1,
     frontAmount: 1,
     sideAmount: 0,
     backAmount: 0,
     bodyWidthScale: 1,
+    headWidthScale: 1,
+    torsoOffsetX: 0,
+    depthShear: 0,
   });
 });
 
-test("carve body width narrows continuously at the side-view apex", () => {
-  const views = [72, 54, 36, 18, 0, -18, -36, -54, -72]
+test("carve volume rotates continuously through the side-view apex", () => {
+  const velocities = Array.from(
+    { length: 33 },
+    (_, index) => 72 - (144 * index) / 32,
+  );
+  const views = velocities
     .map((velocity) => resolveCarveView("carve", velocity, velocity < 0 ? -1 : 1));
 
-  for (const view of views) {
-    assert.ok(Math.abs(view.frontAmount + view.sideAmount + view.backAmount - 1) < 1e-9);
+  for (let index = 0; index < views.length; index++) {
+    const view = views[index];
+    assert.ok(
+      Math.abs(
+        view.frontAmount ** 2 +
+        view.sideAmount ** 2 +
+        view.backAmount ** 2 -
+        1,
+      ) < 1e-9,
+    );
     assert.ok(view.bodyWidthScale >= 0.62 && view.bodyWidthScale <= 1);
+    assert.ok(view.headWidthScale >= 0.7 && view.headWidthScale <= 1);
+    assert.ok(view.depthShear >= 0 && view.depthShear <= 0.18);
+    if (index > 0) {
+      const previous = views[index - 1];
+      assert.ok(view.bodyYaw > previous.bodyYaw);
+      assert.ok(Math.abs(view.bodyWidthScale - previous.bodyWidthScale) < 0.04);
+      assert.ok(Math.abs(view.headWidthScale - previous.headWidthScale) < 0.03);
+      assert.ok(Math.abs(view.depthShear - previous.depthShear) < 0.02);
+    }
   }
-  assert.deepEqual(
-    views.map((view) => view.bodyWidthScale),
-    [1, 0.905, 0.81, 0.715, 0.62, 0.715, 0.81, 0.905, 1],
+  assert.equal(views[0].bodyYaw, 0);
+  assert.equal(views[16].bodyYaw, Math.PI / 2);
+  assert.equal(views[16].bodyWidthScale, 0.62);
+  assert.equal(views[16].headWidthScale, 0.7);
+  assert.equal(views.at(-1).bodyYaw, Math.PI);
+});
+
+test("shoulders and arms gain continuous depth through front side and back", () => {
+  const velocities = Array.from(
+    { length: 33 },
+    (_, index) => 72 - (144 * index) / 32,
   );
+  const skeletons = velocities.map((velocity) =>
+    resolveCarveUpperBodyProjection(
+      resolveCarveView("carve", velocity, velocity < 0 ? -1 : 1),
+      false,
+    ),
+  );
+
+  assert.ok(skeletons[0].leftShoulder.x > skeletons[0].rightShoulder.x);
+  assert.ok(
+    Math.abs(skeletons[16].leftShoulder.x - skeletons[16].rightShoulder.x) <
+      1e-9,
+  );
+  assert.ok(skeletons[16].leftShoulder.y > skeletons[16].rightShoulder.y);
+  assert.ok(skeletons.at(-1).leftShoulder.x < skeletons.at(-1).rightShoulder.x);
+
+  for (let index = 1; index < skeletons.length; index++) {
+    const previous = skeletons[index - 1];
+    const current = skeletons[index];
+    for (const point of ["leftShoulder", "rightShoulder", "leftHand", "rightHand"]) {
+      assert.ok(Math.abs(current[point].x - previous[point].x) < 1.4);
+      assert.ok(Math.abs(current[point].y - previous[point].y) < 0.5);
+    }
+  }
 });
 
 test("carve bindings keep the left foot on the nose and right foot on the tail", () => {

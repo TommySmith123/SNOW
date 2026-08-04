@@ -142,19 +142,80 @@ export function resolveCarveView(
   if (style !== "carve") {
     return {
       turnBlend,
+      bodyYaw: 0,
+      facingCosine: 1,
       frontAmount: 1,
       sideAmount: 0,
       backAmount: 0,
       bodyWidthScale: 1,
+      headWidthScale: 1,
+      torsoOffsetX: 0,
+      depthShear: 0,
     };
   }
 
+  // Treat the rider as one continuous volume rotating around a vertical axis.
+  // Trigonometric weights remove the linear front/side/back hinge at the apex.
+  const bodyYaw = (1 - turnBlend) * (Math.PI / 2);
+  const rawFacingCosine = Math.cos(bodyYaw);
+  const rawSideAmount = Math.sin(bodyYaw);
+  const facingCosine = Math.abs(rawFacingCosine) < 1e-9
+    ? 0
+    : rawFacingCosine;
+  const sideAmount = Math.abs(rawSideAmount) < 1e-9
+    ? 0
+    : rawSideAmount;
+  const facingAmount = Math.abs(facingCosine);
+
   return {
     turnBlend,
-    frontAmount: Math.max(0, turnBlend),
-    sideAmount: 1 - Math.abs(turnBlend),
-    backAmount: Math.max(0, -turnBlend),
-    bodyWidthScale: 1 - (1 - Math.abs(turnBlend)) * 0.38,
+    bodyYaw,
+    facingCosine,
+    frontAmount: Math.max(0, facingCosine),
+    sideAmount,
+    backAmount: Math.max(0, -facingCosine),
+    bodyWidthScale: 0.62 + facingAmount * 0.38,
+    headWidthScale: 0.7 + facingAmount * 0.3,
+    torsoOffsetX: sideAmount * 2.8,
+    depthShear: sideAmount * 0.18,
+  };
+}
+
+export function resolveCarveUpperBodyProjection(
+  view: ReturnType<typeof resolveCarveView>,
+  tuck: boolean,
+) {
+  const shoulderY = tuck ? -13 : -18;
+  const leftShoulder = {
+    x: view.torsoOffsetX + view.facingCosine * 10,
+    y: shoulderY + view.sideAmount * 3.2,
+  };
+  const rightShoulder = {
+    x: view.torsoOffsetX - view.facingCosine * 10,
+    y: shoulderY - view.sideAmount * 3.2,
+  };
+  const leftHand = {
+    x: view.torsoOffsetX + view.facingCosine * 5 + view.sideAmount * 2.2,
+    y: (tuck ? 4 : 7) + view.sideAmount * 1.7,
+  };
+  const rightHand = {
+    x: view.torsoOffsetX - view.facingCosine * 5 - view.sideAmount * 1.2,
+    y: (tuck ? 3 : 6) - view.sideAmount * 1.5,
+  };
+
+  return {
+    leftShoulder,
+    rightShoulder,
+    leftHand,
+    rightHand,
+    leftElbow: {
+      x: (leftShoulder.x + leftHand.x) / 2 + 3 * view.facingCosine,
+      y: (leftShoulder.y + leftHand.y) / 2,
+    },
+    rightElbow: {
+      x: (rightShoulder.x + rightHand.x) / 2 - 3 * view.facingCosine,
+      y: (rightShoulder.y + rightHand.y) / 2,
+    },
   };
 }
 

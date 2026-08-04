@@ -47,6 +47,7 @@ import {
   resolveBoundaryVelocity,
   resolveBodyLocalBindings,
   resolveCarveBindingProjection,
+  resolveCarveUpperBodyProjection,
   resolveCarveView,
   resolveRiderBaseRotation,
   resolveTurnMotion,
@@ -766,6 +767,30 @@ function drawHatShape(
   }
 }
 
+function drawRiderArm(
+  ctx: CanvasRenderingContext2D,
+  shoulder: { x: number; y: number },
+  elbow: { x: number; y: number },
+  hand: { x: number; y: number },
+  color: string,
+  alpha: number,
+) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#080a0d";
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.moveTo(shoulder.x, shoulder.y);
+  ctx.quadraticCurveTo(elbow.x, elbow.y, hand.x, hand.y);
+  ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 7;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawBoarder(
   ctx: CanvasRenderingContext2D,
   model: GameModel,
@@ -792,7 +817,7 @@ function drawBoarder(
   const boardPivotY = 27.5;
   // A crash rotates the already assembled carve pose. It must not switch back
   // to physical left/right bindings or a front-facing body on impact.
-  const carving = ACTIVE_TURN_STYLE === "carve" && !brake;
+  const carving = ACTIVE_TURN_STYLE === "carve";
   const carveView = resolveCarveView(
     ACTIVE_TURN_STYLE,
     model.lateralVelocity,
@@ -803,6 +828,10 @@ function drawBoarder(
   const carveSideAmount = carving ? carveView.sideAmount : 0;
   const carveBackAmount = carving ? carveView.backAmount : 0;
   const bodyWidthScale = carving ? carveView.bodyWidthScale : 1;
+  const headWidthScale = carving ? carveView.headWidthScale : 1;
+  const carveFacingCosine = carving ? carveView.facingCosine : 1;
+  const torsoOffsetX = carving ? carveView.torsoOffsetX : 0;
+  const depthShear = carving ? carveView.depthShear : 0;
   const physicalLeftBinding = rotatePointAround(
     -14,
     26,
@@ -852,26 +881,36 @@ function drawBoarder(
   // they change screen sides together instead of stretching into an X.
   const leftHipX = usesProjectedStance ? leftFoot.x * 0.54 : -8;
   const rightHipX = usesProjectedStance ? rightFoot.x * 0.54 : 7;
+  const leftHipY = hipY + (carving ? carveSideAmount * 2.4 : 0);
+  const rightHipY = hipY - (carving ? carveSideAmount * 2.4 : 0);
   const stanceScreenDirection = Math.sign(leftFoot.x - rightFoot.x) || 1;
   const kneeOut = brake ? 3.5 : 2;
+  const {
+    leftShoulder,
+    rightShoulder,
+    leftHand,
+    rightHand,
+    leftElbow,
+    rightElbow,
+  } = resolveCarveUpperBodyProjection(carveView, tuck);
   const legs = [
     {
-      hip: { x: leftHipX, y: hipY },
+      hip: { x: leftHipX, y: leftHipY },
       knee: {
         x:
           (leftHipX + leftFoot.x) / 2 +
           stanceScreenDirection * kneeOut,
-        y: hipY + (leftFoot.y - hipY) * 0.52,
+        y: leftHipY + (leftFoot.y - leftHipY) * 0.52,
       },
       foot: leftFoot,
     },
     {
-      hip: { x: rightHipX, y: hipY },
+      hip: { x: rightHipX, y: rightHipY },
       knee: {
         x:
           (rightHipX + rightFoot.x) / 2 -
           stanceScreenDirection * kneeOut,
-        y: hipY + (rightFoot.y - hipY) * 0.52,
+        y: rightHipY + (rightFoot.y - rightHipY) * 0.52,
       },
       foot: rightFoot,
     },
@@ -977,7 +1016,8 @@ function drawBoarder(
 
   // Deep red hair silhouette from the supplied protagonist reference.
   ctx.save();
-  ctx.scale(bodyWidthScale, 1);
+  ctx.translate(torsoOffsetX, 0);
+  ctx.transform(bodyWidthScale, depthShear, 0, 1, 0, 0);
   ctx.fillStyle = "#a9121d";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
@@ -1005,7 +1045,8 @@ function drawBoarder(
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 3;
   ctx.save();
-  ctx.scale(bodyWidthScale, 1);
+  ctx.translate(torsoOffsetX, 0);
+  ctx.transform(bodyWidthScale, depthShear, 0, 1, 0, 0);
   roundedRect(ctx, -12, tuck ? -1 : 1, 24, 13, 5);
   ctx.fill();
   ctx.stroke();
@@ -1032,20 +1073,63 @@ function drawBoarder(
   ctx.stroke();
   drawPantsDecoration(ctx, pantsStyle, legs);
 
+  // The far arm sits behind the torso. At the side-view apex its raised
+  // shoulder and reduced opacity create depth without a discrete layer swap.
+  if (carving) {
+    drawRiderArm(
+      ctx,
+      rightShoulder,
+      rightElbow,
+      rightHand,
+      jacketStyle.color,
+      0.58 + carveFrontAmount * 0.24 + carveBackAmount * 0.12,
+    );
+  }
+
   // Black hoodie with a pale-blue heart/deer emblem.
   ctx.save();
   const tuckSide = carving ? carveFaceBlend : model.edge;
   ctx.translate(tuck ? tuckSide * 6 : 0, tuck ? 5 : 0);
   ctx.rotate(tuck ? -tuckSide * 0.24 : 0);
-  // The whole upper silhouette narrows at the side-view apex and expands again
-  // toward the back; this makes the turn volumetric instead of an alpha fade.
-  ctx.scale(bodyWidthScale, 1);
+  // One perspective transform drives the jacket, head, hair and equipment.
+  // Horizontal compression supplies yaw while the y shear separates the near
+  // and far shoulders, so the side view reads as volume rather than a cutout.
+  ctx.translate(torsoOffsetX, 0);
+  ctx.transform(bodyWidthScale, depthShear, 0, 1, 0, 0);
   ctx.fillStyle = jacketStyle.color;
   ctx.strokeStyle = "#080a0d";
   ctx.lineWidth = 4;
   roundedRect(ctx, -15, tuck ? -19 : -23, 30, tuck ? 30 : 36, 9);
   ctx.fill();
   ctx.stroke();
+
+  if (carving && carveSideAmount > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.1 + carveSideAmount * 0.22;
+    const sideShade = ctx.createLinearGradient(-14, 0, 14, 0);
+    sideShade.addColorStop(0, "rgba(4, 8, 14, .72)");
+    sideShade.addColorStop(0.52, "rgba(4, 8, 14, .08)");
+    sideShade.addColorStop(1, "rgba(255, 255, 255, .18)");
+    ctx.fillStyle = sideShade;
+    roundedRect(ctx, -14, tuck ? -18 : -22, 28, tuck ? 28 : 34, 8);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.2 + carveSideAmount * 0.25;
+    ctx.strokeStyle = "rgba(226, 240, 255, .72)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(9 * carveFacingCosine, tuck ? -16 : -20);
+    ctx.quadraticCurveTo(
+      11 * carveFacingCosine + 2.5,
+      tuck ? -5 : -7,
+      7 * carveFacingCosine,
+      tuck ? 8 : 10,
+    );
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.globalAlpha = carving
@@ -1102,18 +1186,23 @@ function drawBoarder(
     ? carveFrontAmount + carveSideAmount * 0.45
     : 1;
   const faceCenterX = carving
-    ? carveFrontAmount * 1.5 + carveSideAmount * 5
+    ? carveFrontAmount * 0.8 + carveSideAmount * 2.6
     : tuck
       ? model.edge * 4
       : 0;
+  const headScaleCorrection = bodyWidthScale > 0
+    ? headWidthScale / bodyWidthScale
+    : 1;
   ctx.save();
   ctx.globalAlpha = faceReveal;
+  ctx.translate(faceCenterX, 0);
+  ctx.scale(headScaleCorrection, 1);
   ctx.fillStyle = "#ffd8ca";
   ctx.strokeStyle = "#170e18";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.ellipse(
-    faceCenterX,
+    0,
     tuck ? -23 : -33,
     12,
     11,
@@ -1135,8 +1224,7 @@ function drawBoarder(
       : 1;
     ctx.beginPath();
     ctx.ellipse(
-      faceCenterX +
-        side * (3.6 + carveFrontAmount * 0.9),
+      side * (3.6 + carveFrontAmount * 0.9),
       tuck ? -25 : -35,
       3.3 - farAmount * 1.2,
       4.3 - farAmount * 0.9,
@@ -1164,10 +1252,27 @@ function drawBoarder(
       ctx.fill();
     }
   }
+
+  if (carving && carveSideAmount > 0.25) {
+    ctx.save();
+    ctx.globalAlpha = carveSideAmount * faceReveal * 0.72;
+    ctx.fillStyle = "#f3b9aa";
+    ctx.strokeStyle = "#170e18";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(10.5, tuck ? -25 : -35);
+    ctx.quadraticCurveTo(15, tuck ? -23 : -33, 10.8, tuck ? -20 : -30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.restore();
 
   // White wing-like ear accents.
   ctx.save();
+  ctx.translate(faceCenterX, 0);
+  ctx.scale(headScaleCorrection, 1);
   ctx.globalAlpha = carving
     ? carveFrontAmount + carveSideAmount * 0.45 + carveBackAmount * 0.3
     : 1;
@@ -1188,14 +1293,13 @@ function drawBoarder(
   ctx.restore();
 
   // Black beanie and oversized dotted snow goggles.
+  ctx.save();
+  ctx.translate(faceCenterX, 0);
+  ctx.scale(headScaleCorrection, 1);
   drawHatShape(
     ctx,
     hatStyle,
-    carving
-      ? carveFrontAmount * 1.2 + carveSideAmount * 3.2 - carveBackAmount * 1.2
-      : tuck
-        ? model.edge * 4
-        : 0,
+    carving ? 0 : tuck ? model.edge * 4 : 0,
     tuck ? -31 : -41,
   );
 
@@ -1223,11 +1327,25 @@ function drawBoarder(
     ctx.arc(dotX, dotY + (tuck ? 10 : 0), 1.2, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.restore();
-  ctx.restore();
-  ctx.restore();
+  ctx.restore(); // goggle face
+  ctx.restore(); // head perspective
+  ctx.restore(); // upper-body perspective
 
-  ctx.restore();
+  // The near arm stays in front of the torso throughout the same continuous
+  // yaw, so the rider gains a readable shoulder/arm volume at every angle.
+  if (carving) {
+    drawRiderArm(
+      ctx,
+      leftShoulder,
+      leftElbow,
+      leftHand,
+      jacketStyle.color,
+      0.9,
+    );
+  }
+  ctx.restore(); // brake/tuck body frame
+
+  ctx.restore(); // complete rider frame
 }
 
 function drawTracks(ctx: CanvasRenderingContext2D, model: GameModel) {
