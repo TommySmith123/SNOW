@@ -144,8 +144,11 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(game, /const bodyFlip = brake \? Math\.PI : 0/);
   assert.match(game, /resolveBodyLocalBindings/);
   assert.match(game, /must never exchange/);
-  assert.match(game, /leftHipX = usesProjectedStance/);
-  assert.match(game, /stanceScreenDirection/);
+  assert.match(game, /resolveCarveLegProjection/);
+  assert.match(game, /applyBoardSurfaceTransform/);
+  assert.match(game, /applyBoardDirectionTransform/);
+  assert.match(game, /CARVE_DEPTH_SCALE/);
+  assert.doesNotMatch(game, /Math\.sign\(leftFoot\.x - rightFoot\.x\)/);
   assert.match(game, /ctx\.rotate\(bodyFlip\)/);
   assert.match(game, /function drawBrakeSparks/);
   assert.match(game, /model\.stance !== "brake"/);
@@ -211,6 +214,10 @@ test("keeps core game contracts explicit and configurable", async () => {
   assert.match(turning, /leftShoulder/);
   assert.match(turning, /rightShoulder/);
   assert.match(turning, /function resolveCarveBindingProjection/);
+  assert.match(turning, /CARVE_DEPTH_SCALE = 0\.46/);
+  assert.match(turning, /function resolveCarveLegProjection/);
+  assert.match(turning, /maximumDistance = brake \? 25 : 26/);
+  assert.match(turning, /leftFoot\.x - rightFoot\.x\) \/ 8/);
   assert.match(turning, /left: rotateBinding\(14\)/);
   assert.match(turning, /right: rotateBinding\(-14\)/);
   assert.match(turning, /function resolveBodyLocalBindings/);

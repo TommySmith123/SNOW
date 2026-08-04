@@ -1,5 +1,7 @@
 import type { TurnStyle } from "./config";
 
+export const CARVE_DEPTH_SCALE = 0.46;
+
 export type TurnMotionInput = {
   style: TurnStyle;
   edge: -1 | 1;
@@ -231,8 +233,8 @@ export function resolveCarveBindingProjection(
     x: longitudinalOffset * cosine - bindingOffsetY * sine,
     y:
       pivotY +
-      longitudinalOffset * sine +
-      bindingOffsetY * cosine,
+      CARVE_DEPTH_SCALE *
+        (longitudinalOffset * sine + bindingOffsetY * cosine),
   });
 
   return {
@@ -244,6 +246,70 @@ export function resolveCarveBindingProjection(
 }
 
 type BindingPoint = { x: number; y: number };
+
+export function resolveCarveLegProjection(
+  view: ReturnType<typeof resolveCarveView>,
+  leftFoot: BindingPoint,
+  rightFoot: BindingPoint,
+  tuck: boolean,
+  brake: boolean,
+) {
+  const hipBaseY = tuck ? 2 : 5;
+  const footCenterY = (leftFoot.y + rightFoot.y) / 2;
+  const makeHip = (
+    foot: BindingPoint,
+    depthSide: -1 | 1,
+    fallbackX: number,
+  ) => {
+    const ideal = {
+      x: Number.isFinite(foot.x) ? foot.x * 0.54 : fallbackX,
+      y:
+        hipBaseY +
+        (foot.y - footCenterY) * 0.38 +
+        view.sideAmount * depthSide * 1.2,
+    };
+    const dx = foot.x - ideal.x;
+    const dy = foot.y - ideal.y;
+    const distance = Math.hypot(dx, dy);
+    const maximumDistance = brake ? 25 : 26;
+    if (distance <= maximumDistance || distance === 0) return ideal;
+    const correction = (distance - maximumDistance) / distance;
+    return {
+      x: ideal.x + dx * correction,
+      y: ideal.y + dy * correction,
+    };
+  };
+
+  const leftHip = makeHip(leftFoot, 1, -8);
+  const rightHip = makeHip(rightFoot, -1, 7);
+  // A continuous signed projection replaces Math.sign(), whose instant +1/-1
+  // flip made both knees fold to the other side at the carve apex.
+  const stanceDirection = clamp(
+    (leftFoot.x - rightFoot.x) / 8,
+    -1,
+    1,
+  );
+  const kneeOut = (brake ? 3.5 : 2) * stanceDirection;
+
+  return {
+    left: {
+      hip: leftHip,
+      knee: {
+        x: (leftHip.x + leftFoot.x) / 2 + kneeOut,
+        y: leftHip.y + (leftFoot.y - leftHip.y) * 0.52,
+      },
+      foot: leftFoot,
+    },
+    right: {
+      hip: rightHip,
+      knee: {
+        x: (rightHip.x + rightFoot.x) / 2 - kneeOut,
+        y: rightHip.y + (rightFoot.y - rightHip.y) * 0.52,
+      },
+      foot: rightFoot,
+    },
+  };
+}
 
 export function resolveBodyLocalBindings(
   left: BindingPoint,

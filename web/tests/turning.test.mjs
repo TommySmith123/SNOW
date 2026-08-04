@@ -19,10 +19,12 @@ async function loadTurning() {
 }
 
 const {
+  CARVE_DEPTH_SCALE,
   resolveBoardHeading,
   resolveBodyLocalBindings,
   resolveBoundaryVelocity,
   resolveCarveBindingProjection,
+  resolveCarveLegProjection,
   resolveCarveUpperBodyProjection,
   resolveCarveView,
   resolveFaceBlend,
@@ -304,14 +306,16 @@ test("carve bindings keep the left foot on the nose and right foot on the tail",
     const sine = Math.sin(angle);
     const cosine = Math.cos(angle);
     const projection = sweep[index];
+    const leftDepth = (projection.left.y - 27.5) / CARVE_DEPTH_SCALE;
+    const rightDepth = (projection.right.y - 27.5) / CARVE_DEPTH_SCALE;
     const leftLongitudinal =
-      cosine * projection.left.x + sine * (projection.left.y - 27.5);
+      cosine * projection.left.x + sine * leftDepth;
     const rightLongitudinal =
-      cosine * projection.right.x + sine * (projection.right.y - 27.5);
+      cosine * projection.right.x + sine * rightDepth;
     const leftTransverse =
-      -sine * projection.left.x + cosine * (projection.left.y - 27.5);
+      -sine * projection.left.x + cosine * leftDepth;
     const rightTransverse =
-      -sine * projection.right.x + cosine * (projection.right.y - 27.5);
+      -sine * projection.right.x + cosine * rightDepth;
 
     assert.ok(Math.abs(leftLongitudinal - 14) < 1e-9);
     assert.ok(Math.abs(rightLongitudinal + 14) < 1e-9);
@@ -321,7 +325,7 @@ test("carve bindings keep the left foot on the nose and right foot on the tail",
       Math.abs(
         Math.hypot(
           projection.left.x - projection.right.x,
-          projection.left.y - projection.right.y,
+          (projection.left.y - projection.right.y) / CARVE_DEPTH_SCALE,
         ) - 28,
       ) < 1e-9,
     );
@@ -330,6 +334,55 @@ test("carve bindings keep the left foot on the nose and right foot on the tail",
       assert.ok(Math.abs(projection.left.y - sweep[index - 1].left.y) < 2.1);
     }
   }
+  assert.ok(
+    Math.abs(
+      samples[2].left.y - samples[2].right.y - 28 * CARVE_DEPTH_SCALE,
+    ) < 1e-9,
+  );
+  assert.ok(samples[2].left.y - samples[2].right.y < 28);
+});
+
+test("carve legs remain bounded and bend continuously through 33 perspective samples", () => {
+  const samples = Array.from({ length: 33 }, (_, index) => {
+    const angle = (Math.PI * index) / 32;
+    const velocity = 72 - (144 * index) / 32;
+    const bindings = resolveCarveBindingProjection(angle);
+    return resolveCarveLegProjection(
+      resolveCarveView("carve", velocity, velocity < 0 ? -1 : 1),
+      bindings.left,
+      bindings.right,
+      false,
+      false,
+    );
+  });
+
+  for (let index = 0; index < samples.length; index++) {
+    const sample = samples[index];
+    for (const side of ["left", "right"]) {
+      const leg = sample[side];
+      assert.ok(Math.hypot(leg.foot.x - leg.hip.x, leg.foot.y - leg.hip.y) <= 26 + 1e-9);
+      if (index > 0) {
+        const previous = samples[index - 1][side];
+        for (const point of ["hip", "knee", "foot"]) {
+          assert.ok(Math.abs(leg[point].x - previous[point].x) < 2.3);
+          assert.ok(Math.abs(leg[point].y - previous[point].y) < 1.5);
+        }
+        const kneeBend =
+          leg.knee.x - (leg.hip.x + leg.foot.x) / 2;
+        const previousKneeBend =
+          previous.knee.x - (previous.hip.x + previous.foot.x) / 2;
+        assert.ok(Math.abs(kneeBend - previousKneeBend) < 0.7);
+      }
+    }
+  }
+
+  const apex = samples[16];
+  assert.ok(Math.abs(apex.left.foot.x - apex.right.foot.x) < 1e-9);
+  assert.ok(
+    Math.abs(
+      apex.left.foot.y - apex.right.foot.y - 28 * CARVE_DEPTH_SCALE,
+    ) < 1e-9,
+  );
 });
 
 test("brake body transform preserves anatomical binding identities", () => {

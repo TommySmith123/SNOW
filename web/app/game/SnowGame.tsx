@@ -43,10 +43,12 @@ import {
   type PetTrailPosition,
 } from "./pet-follow";
 import {
+  CARVE_DEPTH_SCALE,
   resolveBoardHeading,
   resolveBoundaryVelocity,
   resolveBodyLocalBindings,
   resolveCarveBindingProjection,
+  resolveCarveLegProjection,
   resolveCarveUpperBodyProjection,
   resolveCarveView,
   resolveRiderBaseRotation,
@@ -600,6 +602,49 @@ function rotatePointAround(
   };
 }
 
+function applyBoardSurfaceTransform(
+  ctx: CanvasRenderingContext2D,
+  angle: number,
+  pivotY: number,
+) {
+  ctx.translate(0, pivotY);
+  if (ACTIVE_TURN_STYLE === "carve") {
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    ctx.transform(
+      cosine,
+      CARVE_DEPTH_SCALE * sine,
+      -sine,
+      CARVE_DEPTH_SCALE * cosine,
+      0,
+      0,
+    );
+  } else {
+    ctx.rotate(angle);
+  }
+  ctx.translate(0, -pivotY);
+}
+
+function applyBoardDirectionTransform(
+  ctx: CanvasRenderingContext2D,
+  angle: number,
+) {
+  if (ACTIVE_TURN_STYLE === "carve") {
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    ctx.transform(
+      cosine,
+      CARVE_DEPTH_SCALE * sine,
+      -sine,
+      CARVE_DEPTH_SCALE * cosine,
+      0,
+      0,
+    );
+  } else {
+    ctx.rotate(angle);
+  }
+}
+
 function drawJacketDecoration(
   ctx: CanvasRenderingContext2D,
   jacket: ShopItem,
@@ -875,16 +920,6 @@ function drawBoarder(
     x: bodyLocalBindings.right.x,
     y: bodyLocalBindings.right.y - crouch,
   };
-  const hipY = tuck ? 2 : 5;
-  // Anatomical hips follow the same directed stance as their fixed feet.
-  // At the side-view apex they overlap naturally in depth; after the apex
-  // they change screen sides together instead of stretching into an X.
-  const leftHipX = usesProjectedStance ? leftFoot.x * 0.54 : -8;
-  const rightHipX = usesProjectedStance ? rightFoot.x * 0.54 : 7;
-  const leftHipY = hipY + (carving ? carveSideAmount * 2.4 : 0);
-  const rightHipY = hipY - (carving ? carveSideAmount * 2.4 : 0);
-  const stanceScreenDirection = Math.sign(leftFoot.x - rightFoot.x) || 1;
-  const kneeOut = brake ? 3.5 : 2;
   const {
     leftShoulder,
     rightShoulder,
@@ -893,28 +928,33 @@ function drawBoarder(
     leftElbow,
     rightElbow,
   } = resolveCarveUpperBodyProjection(carveView, tuck);
-  const legs = [
-    {
-      hip: { x: leftHipX, y: leftHipY },
-      knee: {
-        x:
-          (leftHipX + leftFoot.x) / 2 +
-          stanceScreenDirection * kneeOut,
-        y: leftHipY + (leftFoot.y - leftHipY) * 0.52,
-      },
-      foot: leftFoot,
-    },
-    {
-      hip: { x: rightHipX, y: rightHipY },
-      knee: {
-        x:
-          (rightHipX + rightFoot.x) / 2 -
-          stanceScreenDirection * kneeOut,
-        y: rightHipY + (rightFoot.y - rightHipY) * 0.52,
-      },
-      foot: rightFoot,
-    },
-  ] as const;
+  const projectedLegs = resolveCarveLegProjection(
+    carveView,
+    leftFoot,
+    rightFoot,
+    tuck,
+    brake,
+  );
+  const legs = usesProjectedStance
+    ? [projectedLegs.left, projectedLegs.right]
+    : [
+        {
+          hip: { x: -8, y: tuck ? 2 : 5 },
+          knee: {
+            x: (-8 + leftFoot.x) / 2 - 2,
+            y: (tuck ? 2 : 5) + (leftFoot.y - (tuck ? 2 : 5)) * 0.52,
+          },
+          foot: leftFoot,
+        },
+        {
+          hip: { x: 7, y: tuck ? 2 : 5 },
+          knee: {
+            x: (7 + rightFoot.x) / 2 + 2,
+            y: (tuck ? 2 : 5) + (rightFoot.y - (tuck ? 2 : 5)) * 0.52,
+          },
+          foot: rightFoot,
+        },
+      ];
 
   ctx.save();
   ctx.translate(model.playerX + 5, GAME.playerY + 18);
@@ -938,9 +978,7 @@ function drawBoarder(
   // Loose snow is drawn as small white flecks, never as twin "thruster" beams.
   if (!isAirborne(model) && model.status !== "CRASHED") {
     ctx.save();
-    ctx.translate(0, boardPivotY);
-    ctx.rotate(boardRelativeTurn);
-    ctx.translate(0, -boardPivotY);
+    applyBoardSurfaceTransform(ctx, boardRelativeTurn, boardPivotY);
     const spray = brake ? 7 : tuck ? 2 : 4;
     ctx.fillStyle = brake ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.58)";
     for (let i = 0; i < spray; i++) {
@@ -962,17 +1000,13 @@ function drawBoarder(
   // rider. Drawing these layers before the legs keeps both feet visibly planted
   // on top of their binding points through the full directed carve rotation.
   ctx.save();
-  ctx.translate(0, boardPivotY);
-  ctx.rotate(boardRelativeTurn);
-  ctx.translate(0, -boardPivotY);
+  applyBoardSurfaceTransform(ctx, boardRelativeTurn, boardPivotY);
   drawBrakeSparks(ctx, model);
   ctx.restore();
 
   // A conventional snowboard with a pattern shared by its shop preview.
   ctx.save();
-  ctx.translate(0, boardPivotY);
-  ctx.rotate(boardRelativeTurn);
-  ctx.translate(0, -boardPivotY);
+  applyBoardSurfaceTransform(ctx, boardRelativeTurn, boardPivotY);
   ctx.strokeStyle = "#071b2b";
   ctx.fillStyle = boardStyle.color;
   ctx.lineWidth = 4;
@@ -993,7 +1027,7 @@ function drawBoarder(
   for (const binding of [leftBinding, rightBinding]) {
     ctx.save();
     ctx.translate(binding.x, binding.y);
-    ctx.rotate(boardRelativeTurn);
+    applyBoardDirectionTransform(ctx, boardRelativeTurn);
     ctx.beginPath();
     ctx.moveTo(-4, -3);
     ctx.lineTo(4, 3);
